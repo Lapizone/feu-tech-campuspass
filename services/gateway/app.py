@@ -25,6 +25,7 @@ from shared.security import (
     build_service_headers,
     require_user_permission,
 )
+from shared.tls import build_client_ssl_context
 
 _COOKIE_NAME = "campus_session"
 _ROOT_DIR = Path(__file__).resolve().parent.parent.parent
@@ -53,12 +54,37 @@ class CreateAccountRequest(BaseModel):
     studentId: str | None = None
     assignedEventIds: list[str] = Field(default_factory=list)
 
+    @field_validator("username", "password", "role")
+    @classmethod
+    def check_non_blank_required(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Field must not be blank.")
+        return value
+
+    @field_validator("assignedEventIds")
+    @classmethod
+    def check_assigned_events(cls, values: list[str]) -> list[str]:
+        cleaned = [v.strip() for v in values]
+        if any(not v for v in cleaned):
+            raise ValueError("assignedEventIds entries must not be blank.")
+        return cleaned
+
 
 class UpdateAssignmentsRequest(BaseModel):
     model_config = ConfigDict(strict=True, extra="forbid")
 
     role: str | None = None
     assignedEventIds: list[str] | None = None
+
+    @field_validator("assignedEventIds")
+    @classmethod
+    def check_assigned_events(cls, values: list[str] | None) -> list[str] | None:
+        if values is not None:
+            cleaned = [v.strip() for v in values]
+            if any(not v for v in cleaned):
+                raise ValueError("assignedEventIds entries must not be blank.")
+            return cleaned
+        return values
 
 
 def create_app(
@@ -83,17 +109,23 @@ def create_app(
     owns_att = attendance_http_client is None
     owns_notif = notification_http_client is None
 
+    ssl_verify = (
+        build_client_ssl_context(cfg.tls_ca_cert_path)
+        if (owns_dir or owns_reg or owns_att or owns_notif)
+        else True
+    )
+
     dir_http = directory_http_client or httpx.AsyncClient(
-        base_url=cfg.student_directory_url, verify=cfg.tls_ca_cert_path
+        base_url=cfg.student_directory_url, verify=ssl_verify
     )
     reg_http = registration_http_client or httpx.AsyncClient(
-        base_url=cfg.event_registration_url, verify=cfg.tls_ca_cert_path
+        base_url=cfg.event_registration_url, verify=ssl_verify
     )
     att_http = attendance_http_client or httpx.AsyncClient(
-        base_url=cfg.attendance_service_url, verify=cfg.tls_ca_cert_path
+        base_url=cfg.attendance_service_url, verify=ssl_verify
     )
     notif_http = notification_http_client or httpx.AsyncClient(
-        base_url=cfg.notification_service_url, verify=cfg.tls_ca_cert_path
+        base_url=cfg.notification_service_url, verify=ssl_verify
     )
 
     backend_clients: dict[str, httpx.AsyncClient] = {
@@ -397,7 +429,11 @@ def create_app(
         body = await _parse_json_object(request)
         if user_ctx["role"] == ROLE_STUDENT:
             submitted = body.get("studentId")
-            if isinstance(submitted, str) and submitted.strip() != user_ctx.get("studentId"):
+            if (
+                isinstance(submitted, str)
+                and submitted.strip()
+                and submitted.strip() != user_ctx.get("studentId")
+            ):
                 raise ServiceError(
                     403,
                     "FORBIDDEN",
@@ -652,7 +688,7 @@ def create_app(
 
     @app.get("/api/v1/admin/audit-logs")
     async def get_aggregated_audit_logs(
-        request: Request, limit: int = 200
+        request: Request, limit: int = Query(default=200, ge=1, le=1000)
     ) -> dict[str, Any]:
         cid = get_correlation_id(request)
         _, user_ctx = _require_session(request)

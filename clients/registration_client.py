@@ -10,6 +10,18 @@ from shared.errors import ServiceError
 from shared.schemas import validate_dependency_payload
 
 
+def _safe_json(resp: httpx.Response, correlation_id: str) -> dict[str, Any]:
+    try:
+        data = resp.json()
+        return data if isinstance(data, dict) else {"message": str(data)}
+    except ValueError:
+        return {
+            "code": "SERVICE_UNAVAILABLE",
+            "message": f"Unexpected non-JSON response (HTTP {resp.status_code}).",
+            "correlationId": correlation_id,
+        }
+
+
 class RegistrationClient:
     """Consumer-side client enforcing C2 response schema and reconcile-before-retry."""
 
@@ -44,10 +56,10 @@ class RegistrationClient:
 
         if resp.status_code == 201:
             return validate_dependency_payload(
-                "registration_response", resp.json(), correlation_id
+                "registration_response", _safe_json(resp, correlation_id), correlation_id
             )
 
-        body = resp.json()
+        body = _safe_json(resp, correlation_id)
         raise ServiceError(
             resp.status_code,
             body.get("code", "SERVICE_UNAVAILABLE"),
@@ -88,7 +100,7 @@ class RegistrationClient:
             return {"outcome": "UNVERIFIED", "retried": False, "registration": None}
 
         validated_list = validate_dependency_payload(
-            "registrations_list_response", check.json(), correlation_id
+            "registrations_list_response", _safe_json(check, correlation_id), correlation_id
         )
         matches = [
             r for r in validated_list["registrations"] if r["studentId"] == student_id

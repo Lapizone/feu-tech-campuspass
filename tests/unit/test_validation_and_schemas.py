@@ -103,3 +103,16 @@ def test_json_boundary_middleware_enforces_415_400_and_422_with_error_envelope()
     assert r_422.status_code == 422
     assert r_422.json()["code"] == "INVALID_PAYLOAD"
     assert r_422.json()["correlationId"] == "corr-422"
+
+    # Routing 404 and 405 must also use {code, message, correlationId}
+    r_404 = client.get("/api/v1/nonexistent", headers={"X-Correlation-Id": "corr-404"})
+    assert r_404.status_code == 404
+    assert r_404.json()["code"] == "NOT_FOUND"
+    assert r_404.json()["correlationId"] == "corr-404"
+    assert_schema("error", r_404.json())
+
+    r_405 = client.get("/api/v1/demo", headers={"X-Correlation-Id": "corr-405"})
+    assert r_405.status_code == 405
+    assert r_405.json()["code"] == "METHOD_NOT_ALLOWED"
+    assert r_405.json()["correlationId"] == "corr-405"
+    assert_schema("error", r_405.json())

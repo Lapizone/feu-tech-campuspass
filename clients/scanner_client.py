@@ -9,6 +9,18 @@ import httpx
 from shared.schemas import validate_dependency_payload
 
 
+def _safe_json(resp: httpx.Response, correlation_id: str) -> dict[str, Any]:
+    try:
+        data = resp.json()
+        return data if isinstance(data, dict) else {"message": str(data)}
+    except ValueError:
+        return {
+            "code": "SERVICE_UNAVAILABLE",
+            "message": f"Unexpected non-JSON response (HTTP {resp.status_code}).",
+            "correlationId": correlation_id,
+        }
+
+
 class ScannerClient:
     """Scanner client that pre-validates tokens, retains registrationId, and reconciles before retry."""
 
@@ -69,11 +81,11 @@ class ScannerClient:
                 "statusCode": val_resp.status_code,
                 "registrationId": None,
                 "checkIn": None,
-                "error": val_resp.json(),
+                "error": _safe_json(val_resp, correlation_id),
             }
 
         val_data = validate_dependency_payload(
-            "validate_response", val_resp.json(), correlation_id
+            "validate_response", _safe_json(val_resp, correlation_id), correlation_id
         )
         if not val_data["valid"] or not val_data["registrationId"]:
             return {
@@ -125,7 +137,7 @@ class ScannerClient:
                 },
             }
 
-        body = resp.json()
+        body = _safe_json(resp, correlation_id)
         if resp.status_code == 201:
             validated = validate_dependency_payload("checkin_response", body, correlation_id)
             return {
@@ -194,11 +206,11 @@ class ScannerClient:
                 "retried": False,
                 "registrationId": registration_id,
                 "checkIn": None,
-                "error": status_resp.json(),
+                "error": _safe_json(status_resp, correlation_id),
             }
 
         status_data = validate_dependency_payload(
-            "attendance_status_response", status_resp.json(), correlation_id
+            "attendance_status_response", _safe_json(status_resp, correlation_id), correlation_id
         )
         if status_data["checkedIn"]:
             return {

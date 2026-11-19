@@ -186,8 +186,16 @@ class SqliteGatewayAuthRepository:
         if role not in ALL_ROLES:
             raise ServiceError(422, "INVALID_PAYLOAD", f"Unsupported role '{role}'.")
         clean_user = username.strip()
-        if not clean_user or not password:
+        if not clean_user or not password.strip():
             raise ServiceError(422, "INVALID_PAYLOAD", "username and password are required.")
+        clean_student_id = student_id.strip() if isinstance(student_id, str) else None
+        if role == "STUDENT" and not clean_student_id:
+            raise ServiceError(
+                422, "INVALID_PAYLOAD", "studentId is required for STUDENT accounts."
+            )
+        cleaned_events = [e.strip() for e in (assigned_event_ids or [])]
+        if any(not e for e in cleaned_events):
+            raise ServiceError(422, "INVALID_PAYLOAD", "assignedEventIds entries must not be blank.")
         acc_id = f"ACC-{uuid.uuid4().hex[:6].upper()}"
         now = now_rfc3339(self.tz_offset_hours)
         conn = open_connection(self.db_path)
@@ -212,8 +220,8 @@ class SqliteGatewayAuthRepository:
                         clean_user,
                         hash_password(password),
                         role,
-                        student_id,
-                        json.dumps(assigned_event_ids or []),
+                        clean_student_id,
+                        json.dumps(cleaned_events),
                         now,
                     ),
                 )

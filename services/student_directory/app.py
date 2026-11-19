@@ -111,7 +111,9 @@ def create_app(
         return record
 
     @app.get("/api/v1/internal/audit-logs")
-    async def list_audit_logs(request: Request, limit: int = 200) -> dict[str, object]:
+    async def list_audit_logs(
+        request: Request, limit: int = Query(default=200, ge=1, le=1000)
+    ) -> dict[str, object]:
         cid = get_correlation_id(request)
         _, user_ctx = authenticate_service_request(
             request,

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 def error_payload(code: str, message: str, correlation_id: str) -> dict[str, str]:
@@ -89,8 +90,10 @@ def register_exception_handlers(app: FastAPI, audit: Any | None = None) -> None:
             headers={"X-Correlation-Id": cid},
         )
 
-    @app.exception_handler(HTTPException)
-    async def handle_http_exception(request: Request, exc: HTTPException) -> JSONResponse:
+    @app.exception_handler(StarletteHTTPException)
+    async def handle_http_exception(
+        request: Request, exc: StarletteHTTPException
+    ) -> JSONResponse:
         cid = get_correlation_id(request)
         status_code = exc.status_code
         code_map = {
@@ -98,6 +101,7 @@ def register_exception_handlers(app: FastAPI, audit: Any | None = None) -> None:
             401: "UNAUTHORIZED",
             403: "FORBIDDEN",
             404: "NOT_FOUND",
+            405: "METHOD_NOT_ALLOWED",
             409: "CONFLICT",
             415: "UNSUPPORTED_MEDIA_TYPE",
             422: "INVALID_PAYLOAD",

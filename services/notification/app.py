@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from fastapi import BackgroundTasks, FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -120,7 +120,9 @@ def create_app(
         )
 
     @app.get("/api/v1/notifications")
-    async def list_notifications(request: Request, limit: int = 100) -> dict[str, Any]:
+    async def list_notifications(
+        request: Request, limit: int = Query(default=100, ge=1, le=1000)
+    ) -> dict[str, Any]:
         cid = get_correlation_id(request)
         _, user_ctx = authenticate_service_request(
             request,
@@ -152,7 +154,9 @@ def create_app(
         return item
 
     @app.get("/api/v1/internal/audit-logs")
-    async def get_audit_logs(request: Request, limit: int = 200) -> dict[str, Any]:
+    async def get_audit_logs(
+        request: Request, limit: int = Query(default=200, ge=1, le=1000)
+    ) -> dict[str, Any]:
         cid = get_correlation_id(request)
         _, user_ctx = authenticate_service_request(
             request,

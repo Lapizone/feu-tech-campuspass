@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -27,6 +28,10 @@ from shared.security import (
     require_user_permission,
 )
 from shared.time_utils import is_valid_rfc3339_with_offset
+from shared.tls import build_client_ssl_context
+
+
+_SAFE_ID_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 class CreateEventRequest(BaseModel):
@@ -39,12 +44,30 @@ class CreateEventRequest(BaseModel):
     eligibleStatuses: list[str] = Field(default_factory=lambda: ["ENROLLED"], min_length=1)
     startsAt: str | None = None
 
-    @field_validator("eventId", "title")
+    @field_validator("eventId")
     @classmethod
-    def check_non_blank(cls, value: str | None) -> str | None:
-        if value is not None and not value.strip():
-            raise ValueError("Field must not be blank.")
+    def check_event_id(cls, value: str | None) -> str | None:
+        if value is not None:
+            clean = value.strip()
+            if not clean or not _SAFE_ID_RE.match(clean):
+                raise ValueError("eventId must contain only letters, digits, hyphens, or underscores.")
+            return clean
         return value
+
+    @field_validator("title")
+    @classmethod
+    def check_title_non_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("title must not be blank.")
+        return value
+
+    @field_validator("eligibleStatuses")
+    @classmethod
+    def check_statuses_non_blank(cls, values: list[str]) -> list[str]:
+        cleaned = [v.strip() for v in values]
+        if any(not v for v in cleaned):
+            raise ValueError("eligibleStatuses items must not be empty.")
+        return cleaned
 
     @field_validator("startsAt")
     @classmethod
@@ -69,6 +92,16 @@ class UpdateEventRequest(BaseModel):
         if value is not None and not value.strip():
             raise ValueError("title must not be blank.")
         return value
+
+    @field_validator("eligibleStatuses")
+    @classmethod
+    def check_statuses_non_blank(cls, values: list[str] | None) -> list[str] | None:
+        if values is not None:
+            cleaned = [v.strip() for v in values]
+            if any(not v for v in cleaned):
+                raise ValueError("eligibleStatuses items must not be empty.")
+            return cleaned
+        return values
 
     @field_validator("startsAt")
     @classmethod
@@ -126,9 +159,14 @@ def create_app(
     audit = AuditLogger(cfg.event_registration_db, "event-registration", cfg.tz_offset_hours)
 
     owns_dir_client = directory_http_client is None
+    ssl_verify = (
+        build_client_ssl_context(cfg.tls_ca_cert_path)
+        if (directory_http_client is None or (enable_notifications and notification_http_client is None))
+        else True
+    )
     dir_http = directory_http_client or httpx.AsyncClient(
         base_url=cfg.student_directory_url,
-        verify=cfg.tls_ca_cert_path,
+        verify=ssl_verify,
     )
     dir_client = DirectoryClient(dir_http, cfg)
 
@@ -147,7 +185,7 @@ def create_app(
         owns_notif_client = True
         notif_http = httpx.AsyncClient(
             base_url=cfg.notification_service_url,
-            verify=cfg.tls_ca_cert_path,
+            verify=ssl_verify,
         )
         notif_client = NotificationDispatchClient(
             notif_http,
@@ -244,6 +282,8 @@ def create_app(
             context_hmac_key=cfg.context_hmac_key,
         )
         clean_event = eventId.strip()
+        if not clean_event:
+            raise ServiceError(422, "INVALID_PAYLOAD", "eventId must not be empty.", cid)
         actor = require_user_permission(
             user_ctx,
             {ROLE_ORGANIZER, ROLE_ADMINISTRATOR},
@@ -397,7 +437,7 @@ def create_app(
         # Notification failure must never reverse an already committed registration.
         if notif_client is not None:
             elapsed = time.monotonic() - started
-            remaining = max(0.5, cfg.registration_deadline_sec - elapsed)
+            remaining = max(0.1, cfg.registration_deadline_sec - elapsed)
             await notif_client.send_notification(
                 notification_type="REGISTRATION_CONFIRMED",
                 recipient=eligibility["email"],
@@ -441,6 +481,13 @@ def create_app(
             registration_id=result["registrationId"],
             details={"valid": result["valid"]},
         )
+        if caller_service == "gateway":
+            return {
+                "registrationId": result["registrationId"],
+                "eventId": result["eventId"],
+                "status": result["status"],
+                "valid": result["valid"],
+            }
         return result
 
     @app.get("/api/v1/events/{eventId}/registrations")
@@ -458,6 +505,8 @@ def create_app(
             context_hmac_key=cfg.context_hmac_key,
         )
         clean_event = eventId.strip()
+        if not clean_event:
+            raise ServiceError(422, "INVALID_PAYLOAD", "eventId must not be empty.", cid)
         if status is not None and status != "CONFIRMED":
             raise ServiceError(
                 422,
@@ -521,7 +570,9 @@ def create_app(
         return {"service": "event-registration", "failedNotifications": repo.list_failed_notifications()}
 
     @app.get("/api/v1/internal/audit-logs")
-    async def get_audit_logs(request: Request, limit: int = 200) -> dict[str, Any]:
+    async def get_audit_logs(
+        request: Request, limit: int = Query(default=200, ge=1, le=1000)
+    ) -> dict[str, Any]:
         cid = get_correlation_id(request)
         _, user_ctx = authenticate_service_request(
             request,

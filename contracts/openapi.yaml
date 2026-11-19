@@ -169,6 +169,12 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Event ID already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "415":
           $ref: "#/components/responses/UnsupportedMediaType"
         "422":
@@ -387,6 +393,12 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Event ID already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "415":
           $ref: "#/components/responses/UnsupportedMediaType"
         "422":
@@ -479,6 +491,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/InvalidPayload"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
@@ -558,12 +572,45 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Event ID already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "415":
           $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/InvalidPayload"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/notifications/{notificationId}:
+    get:
+      summary: Inspect a single accepted notification record (Administrator)
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Notification details (masked recipient)
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /api/v1/admin/accounts:
     get:
@@ -575,6 +622,12 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [accounts]
+                properties:
+                  accounts:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SessionUser"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -586,18 +639,28 @@ paths:
         content:
           application/json:
             schema:
-              type: object
+              $ref: "#/components/schemas/CreateAccountRequest"
       responses:
         "201":
           description: Account created
           content:
             application/json:
               schema:
-                type: object
+                $ref: "#/components/schemas/SessionUser"
+        "400":
+          $ref: "#/components/responses/MalformedRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Username already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
         "422":
           $ref: "#/components/responses/InvalidPayload"
 
@@ -615,18 +678,30 @@ paths:
         content:
           application/json:
             schema:
-              type: object
+              $ref: "#/components/schemas/UpdateAssignmentsRequest"
       responses:
         "200":
           description: Assignments updated
           content:
             application/json:
               schema:
-                type: object
+                $ref: "#/components/schemas/SessionUser"
+        "400":
+          $ref: "#/components/responses/MalformedRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Account not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/InvalidPayload"
 
   /api/v1/admin/audit-logs:
     get:
@@ -649,6 +724,36 @@ paths:
       responses:
         "200":
           description: Purge summary
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/failed-notifications:
+    get:
+      summary: Review failed notification dispatches pending authorized review (Administrator)
+      responses:
+        "200":
+          description: Failed notification queue
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/service-health:
+    get:
+      summary: Probe health across gateway and backend services (Administrator)
+      responses:
+        "200":
+          description: Service health matrix
           content:
             application/json:
               schema:
@@ -713,6 +818,41 @@ components:
           type: array
           items:
             type: string
+
+    CreateAccountRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password, role]
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+        role:
+          type: string
+          enum: [STUDENT, EVENT_ORGANIZER, CHECK_IN_STAFF, ADMINISTRATOR]
+        studentId:
+          type: ["string", "null"]
+        assignedEventIds:
+          type: array
+          items:
+            type: string
+            minLength: 1
+
+    UpdateAssignmentsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        role:
+          type: ["string", "null"]
+          enum: [STUDENT, EVENT_ORGANIZER, CHECK_IN_STAFF, ADMINISTRATOR, null]
+        assignedEventIds:
+          type: ["array", "null"]
+          items:
+            type: string
+            minLength: 1
 
     LoginResponse:
       type: object
@@ -784,6 +924,7 @@ components:
         eventId:
           type: string
           minLength: 1
+          pattern: "^[A-Za-z0-9_-]+$"
         title:
           type: string
           minLength: 1
@@ -842,6 +983,7 @@ components:
         eventId:
           type: string
           minLength: 1
+          pattern: "^[A-Za-z0-9_-]+$"
         status:
           type: string
           enum: [CONFIRMED]
@@ -857,6 +999,7 @@ components:
         eventId:
           type: string
           minLength: 1
+          pattern: "^[A-Za-z0-9_-]+$"
         qrToken:
           type: string
           minLength: 1
@@ -871,6 +1014,7 @@ components:
         eventId:
           type: string
           minLength: 1
+          pattern: "^[A-Za-z0-9_-]+$"
         status:
           type: ["string", "null"]
         valid:
@@ -916,6 +1060,7 @@ components:
         eventId:
           type: string
           minLength: 1
+          pattern: "^[A-Za-z0-9_-]+$"
         registrationId:
           type: string
           minLength: 1
@@ -942,6 +1087,7 @@ components:
         eventId:
           type: string
           minLength: 1
+          pattern: "^[A-Za-z0-9_-]+$"
         registrations:
           type: array
           items:
@@ -967,6 +1113,7 @@ components:
         eventId:
           type: string
           minLength: 1
+          pattern: "^[A-Za-z0-9_-]+$"
         registrationId:
           type: string
           minLength: 1
@@ -984,6 +1131,7 @@ components:
         eventId:
           type: string
           minLength: 1
+          pattern: "^[A-Za-z0-9_-]+$"
         participants:
           type: array
           items:

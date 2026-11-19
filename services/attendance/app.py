@@ -6,7 +6,7 @@ import time
 from typing import Any
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -24,6 +24,7 @@ from shared.security import (
     authenticate_service_request,
     require_user_permission,
 )
+from shared.tls import build_client_ssl_context
 
 
 class CheckInRequest(BaseModel):
@@ -56,9 +57,14 @@ def create_app(
     audit = AuditLogger(cfg.attendance_db, "attendance-service", cfg.tz_offset_hours)
 
     owns_reg_client = registration_http_client is None
+    ssl_verify = (
+        build_client_ssl_context(cfg.tls_ca_cert_path)
+        if (registration_http_client is None or (enable_notifications and notification_http_client is None))
+        else True
+    )
     reg_http = registration_http_client or httpx.AsyncClient(
         base_url=cfg.event_registration_url,
-        verify=cfg.tls_ca_cert_path,
+        verify=ssl_verify,
     )
     reg_client = RegistrationIntegrationClient(reg_http, cfg)
 
@@ -77,7 +83,7 @@ def create_app(
         owns_notif_client = True
         notif_http = httpx.AsyncClient(
             base_url=cfg.notification_service_url,
-            verify=cfg.tls_ca_cert_path,
+            verify=ssl_verify,
         )
         notif_client = NotificationDispatchClient(
             notif_http,
@@ -217,7 +223,7 @@ def create_app(
         recipient = validated.get("recipient")
         if notif_client is not None and isinstance(recipient, str) and recipient.strip():
             elapsed = time.monotonic() - started
-            remaining = max(0.5, cfg.checkin_deadline_sec - elapsed)
+            remaining = max(0.1, cfg.checkin_deadline_sec - elapsed)
             await notif_client.send_notification(
                 notification_type="CHECK_IN_CONFIRMED",
                 recipient=recipient,
@@ -378,7 +384,9 @@ def create_app(
         return {"service": "attendance-service", "failedNotifications": repo.list_failed_notifications()}
 
     @app.get("/api/v1/internal/audit-logs")
-    async def get_audit_logs(request: Request, limit: int = 200) -> dict[str, Any]:
+    async def get_audit_logs(
+        request: Request, limit: int = Query(default=200, ge=1, le=1000)
+    ) -> dict[str, Any]:
         cid = get_correlation_id(request)
         _, user_ctx = authenticate_service_request(
             request,

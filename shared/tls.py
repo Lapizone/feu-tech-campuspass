@@ -3,8 +3,31 @@
 from __future__ import annotations
 
 import ipaddress
+import ssl
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+
+def ensure_stdlib_ssl_context() -> None:
+    """Restore stdlib ssl.SSLContext if host truststore hooks replaced it.
+
+    Host environments using pip-system-certs monkey-patch ssl.SSLContext with a
+    client-only truststore wrapper that fails on server-side wrap_socket().
+    """
+    for mod_name in ("pip._vendor.truststore", "truststore"):
+        try:
+            mod = __import__(mod_name, fromlist=["extract_from_ssl"])
+            extract = getattr(mod, "extract_from_ssl", None)
+            if callable(extract):
+                extract()
+        except Exception:
+            pass
+
+
+def build_client_ssl_context(ca_cert_path: Path | str) -> ssl.SSLContext:
+    """Create a stdlib TLS client context trusting the prototype Root CA."""
+    ensure_stdlib_ssl_context()
+    return ssl.create_default_context(cafile=str(ca_cert_path))
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization

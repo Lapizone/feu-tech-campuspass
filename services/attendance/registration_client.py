@@ -107,13 +107,14 @@ class RegistrationIntegrationClient:
             if overall_deadline_sec is not None
             else self.settings.reporting_deadline_sec
         )
+        per_attempt_timeout = min(deadline, 3.5)
         try:
             resp = await self.resilient.request_with_retry(
                 "GET",
                 f"/api/v1/events/{event_id}/registrations",
                 params={"status": "CONFIRMED"},
                 headers=headers,
-                timeout_sec=deadline,
+                timeout_sec=per_attempt_timeout,
                 overall_deadline_sec=deadline,
                 allow_retry=True,
                 on_retry=on_retry,

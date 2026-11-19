@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -123,11 +124,13 @@ def load_settings(
         retry_max_attempts=int(get("RETRY_MAX_ATTEMPTS", "2")),
         retry_delays_sec=_parse_delays(merged.get("RETRY_DELAYS_SEC")),
         audit_retention_days=int(get("AUDIT_RETENTION_DAYS", "30")),
-        gateway_service_secret=get("GATEWAY_SERVICE_SECRET", "dev-gateway-secret-ephemeral"),
-        event_registration_service_secret=get("EVENT_REGISTRATION_SERVICE_SECRET", "dev-reg-secret-ephemeral"),
-        attendance_service_secret=get("ATTENDANCE_SERVICE_SECRET", "dev-att-secret-ephemeral"),
-        token_hmac_key=get("TOKEN_HMAC_KEY", "dev-token-hmac-key-ephemeral"),
+        gateway_service_secret=get("GATEWAY_SERVICE_SECRET", secrets.token_urlsafe(32)),
+        event_registration_service_secret=get(
+            "EVENT_REGISTRATION_SERVICE_SECRET", secrets.token_urlsafe(32)
+        ),
+        attendance_service_secret=get("ATTENDANCE_SERVICE_SECRET", secrets.token_urlsafe(32)),
+        token_hmac_key=get("TOKEN_HMAC_KEY", secrets.token_urlsafe(32)),
         token_fernet_key=get("TOKEN_FERNET_KEY", default_fernet),
-        context_hmac_key=get("CONTEXT_HMAC_KEY", "dev-context-hmac-key-ephemeral"),
-        session_secret=get("SESSION_SECRET", "dev-session-secret-ephemeral"),
+        context_hmac_key=get("CONTEXT_HMAC_KEY", secrets.token_urlsafe(32)),
+        session_secret=get("SESSION_SECRET", secrets.token_urlsafe(32)),
     )

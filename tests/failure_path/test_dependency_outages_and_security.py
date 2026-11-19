@@ -100,6 +100,29 @@ def test_rbac_matrix_cross_event_isolation_and_internal_endpoint_protection(tmp_
     reg_id = r_reg.json()["registrationId"]
 
     assert client.post("/api/v1/events/EVT-002/registrations", json={"studentId": "S-002"}, headers=s1_hdr).status_code == 403
+    # Empty studentId for authenticated student must validate as 422 INVALID_PAYLOAD, not 403
+    r_empty_sid = client.post("/api/v1/events/EVT-002/registrations", json={"studentId": ""}, headers=s1_hdr)
+    assert r_empty_sid.status_code == 422
+    assert r_empty_sid.json()["code"] == "INVALID_PAYLOAD"
+
+    # Unsafe eventId characters (e.g. quotes) are rejected as 422 INVALID_PAYLOAD
+    r_unsafe_eid = client.post(
+        "/api/v1/events",
+        json={"eventId": 'EVT"BAD', "title": "Bad Event", "capacity": 5},
+        headers=org1_hdr,
+    )
+    assert r_unsafe_eid.status_code == 422
+    assert r_unsafe_eid.json()["code"] == "INVALID_PAYLOAD"
+
+    # Gateway /registrations/validate for CHECK_IN_STAFF omits recipient PII
+    r_val_staff = client.post(
+        "/api/v1/registrations/validate",
+        json={"eventId": "EVT-001", "qrToken": qr_token},
+        headers=scn1_hdr,
+    )
+    assert r_val_staff.status_code == 200
+    assert r_val_staff.json()["valid"] is True
+    assert "recipient" not in r_val_staff.json()
 
     # Student cannot access internal/admin/organizer/scanner endpoints -> 403
     assert client.post("/api/v1/events", json={"title": "Rogue", "capacity": 5}, headers=s1_hdr).status_code == 403

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campus Event Registration &amp; Attendance Prototype</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Integrated Campus Event Registration &amp; Attendance System</h1>
+      <p>HTTPS Prototype &middot; Versioned /api/v1/ Contracts &middot; Independent Service Boundaries</p>
+    </div>
+    <div class="session-bar">
+      <span id="session-summary">Not signed in</span>
+      <button id="btn-logout" class="secondary" style="display:none;">Sign Out</button>
+    </div>
+  </header>
+
+  <nav class="nav-tabs" aria-label="Role workspaces">
+    <button class="tab-btn active" data-tab="tab-auth">Sign In</button>
+    <button class="tab-btn" data-tab="tab-student">Student Portal</button>
+    <button class="tab-btn" data-tab="tab-scanner">Check-in Scanner</button>
+    <button class="tab-btn" data-tab="tab-organizer">Organizer Dashboard</button>
+    <button class="tab-btn" data-tab="tab-admin">Administrator Console</button>
+  </nav>
+
+  <main class="container">
+    <div id="global-status"></div>
+
+    <!-- Sign In Panel -->
+    <section id="tab-auth" class="panel active">
+      <div class="grid-2">
+        <div class="card">
+          <h2>Authenticate Sample Account</h2>
+          <p class="muted">Sessions are validated server-side against salted scrypt password hashes.</p>
+          <form id="login-form">
+            <label for="login-username">Username</label>
+            <input id="login-username" name="username" required placeholder="e.g. student_s001">
+            <label for="login-password">Password</label>
+            <input id="login-password" name="password" type="password" required placeholder="Password123!">
+            <div class="row">
+              <button type="submit" class="primary">Sign In</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h3>Sample Prototype Accounts</h3>
+          <p class="muted">Click any sample account below to autofill credentials for testing each role boundary:</p>
+          <div class="row">
+            <button class="secondary quick-login" data-user="student_s001" data-pass="Password123!">student_s001 (S-001 Eligible)</button>
+            <button class="secondary quick-login" data-user="student_s002" data-pass="Password123!">student_s002 (S-002 Eligible)</button>
+            <button class="secondary quick-login" data-user="student_s003" data-pass="Password123!">student_s003 (S-003 Eligible)</button>
+            <button class="secondary quick-login" data-user="student_s004" data-pass="Password123!">student_s004 (ON_LEAVE)</button>
+            <button class="secondary quick-login" data-user="student_s005" data-pass="Password123!">student_s005 (EVT-001 Ineligible)</button>
+            <button class="secondary quick-login" data-user="scanner1" data-pass="Password123!">scanner1 (Check-in Staff)</button>
+            <button class="secondary quick-login" data-user="organizer1" data-pass="Password123!">organizer1 (Organizer)</button>
+            <button class="secondary quick-login" data-user="admin1" data-pass="AdminPassword123!">admin1 (Administrator)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Student Portal -->
+    <section id="tab-student" class="panel">
+      <div class="grid-2">
+        <div class="card">
+          <h2>Available Campus Events</h2>
+          <div class="row">
+            <button id="btn-refresh-events" class="secondary">Refresh Events</button>
+          </div>
+          <div id="student-events-list"></div>
+          <div id="student-register-status"></div>
+        </div>
+        <div class="card">
+          <h2>My Confirmed Registrations &amp; QR Tokens</h2>
+          <p class="muted">Each confirmed registration issues one opaque, event-specific QR token.</p>
+          <div class="row">
+            <button id="btn-refresh-my-regs" class="secondary">Reload My QR Tickets</button>
+          </div>
+          <div id="my-registrations-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Check-in Scanner -->
+    <section id="tab-scanner" class="panel">
+      <div class="card">
+        <h2>Venue QR Check-in Scanner</h2>
+        <p class="muted">
+          Follows the two-step validation &amp; reconciliation contract: validates token to retain
+          <code>registrationId</code>, submits check-in, and never displays <code>503</code> or timeouts as verified success.
+        </p>
+        <div class="grid-2">
+          <div>
+            <label for="scanner-event-id">Assigned Event</label>
+            <select id="scanner-event-id"></select>
+
+            <label for="scanner-qr-token">Scanned QR Token</label>
+            <input id="scanner-qr-token" placeholder="Paste or scan opaque QR token">
+
+            <div class="row">
+              <button id="btn-scanner-checkin" class="primary">Validate &amp; Check In</button>
+              <button id="btn-scanner-reconcile" class="warning" style="display:none;">Reconcile Attendance Status</button>
+              <button id="btn-scanner-retry" class="primary" style="display:none;">Safe Retry Check-in</button>
+            </div>
+          </div>
+          <div>
+            <h3>Scanner Outcome</h3>
+            <div id="scanner-result">
+              <div class="alert info">Awaiting QR scan.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Organizer Dashboard -->
+    <section id="tab-organizer" class="panel">
+      <div class="grid-2">
+        <div class="card">
+          <h2>Create Event</h2>
+          <form id="create-event-form">
+            <label for="ev-id">Event ID (optional)</label>
+            <input id="ev-id" placeholder="e.g. EVT-003">
+            <label for="ev-title">Title</label>
+            <input id="ev-title" required placeholder="Department Research Colloquium">
+            <label for="ev-capacity">Capacity</label>
+            <input id="ev-capacity" type="number" min="1" value="25" required>
+            <label for="ev-desc">Description</label>
+            <input id="ev-desc" placeholder="Short event summary">
+            <div class="row">
+              <button type="submit" class="primary">Create Event</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Combined Participant &amp; Attendance Report</h2>
+          <label for="org-event-id">Event</label>
+          <select id="org-event-id"></select>
+          <div class="row">
+            <button id="btn-load-report" class="primary">Load Combined Report</button>
+            <button id="btn-load-participants" class="secondary">Confirmed Participants Only</button>
+          </div>
+          <div id="org-report-output"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Administrator Console -->
+    <section id="tab-admin" class="panel">
+      <div class="grid-2">
+        <div class="card">
+          <h2>Service Health &amp; Controls</h2>
+          <div class="row">
+            <button id="btn-admin-refresh" class="primary">Refresh Admin Telemetry</button>
+            <button id="btn-admin-purge" class="secondary">Run 30-Day Audit Purge</button>
+          </div>
+          <div id="admin-health-output"></div>
+        </div>
+        <div class="card">
+          <h2>Sample Accounts &amp; Assignments</h2>
+          <div id="admin-accounts-output"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Notification Queue &amp; Failed-Notification Review</h3>
+        <div id="admin-notifications-output"></div>
+      </div>
+      <div class="card">
+        <h3>Redacted Audit Logs (Aggregated via HTTPS Interfaces)</h3>
+        <div id="admin-audit-output"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/qr.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
