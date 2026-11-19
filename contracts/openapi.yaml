@@ -1,0 +1,1088 @@
+openapi: 3.1.1
+info:
+  title: Integrated Campus Event Registration and Attendance System API
+  version: 1.0.0
+  description: >-
+    Versioned REST/JSON interface specification for the Integrated Campus Event
+    Registration and Attendance System prototype. All endpoints use HTTPS,
+    application/json, lower camel case field names, RFC 3339 timestamps with
+    explicit timezone offset, and the uniform {code, message, correlationId}
+    error envelope.
+servers:
+  - url: https://127.0.0.1:8440
+    description: Local HTTPS API Gateway
+  - url: https://127.0.0.1:8441
+    description: Student Directory Service
+  - url: https://127.0.0.1:8442
+    description: Event Registration Service
+  - url: https://127.0.0.1:8443
+    description: Attendance Service
+  - url: https://127.0.0.1:8444
+    description: Notification Service
+
+security:
+  - sessionBearer: []
+  - sessionCookie: []
+
+paths:
+  /api/v1/auth/login:
+    post:
+      summary: Authenticate a sample account and establish a server-validated session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              username: student_s001
+              password: Password123!
+      responses:
+        "200":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/MalformedRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/InvalidPayload"
+
+  /api/v1/auth/logout:
+    post:
+      summary: Revoke the active session
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [loggedOut]
+                properties:
+                  loggedOut:
+                    type: boolean
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/auth/me:
+    get:
+      summary: Return current authenticated session identity, role, and event assignments
+      responses:
+        "200":
+          description: Authenticated session details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/students/{studentId}/eligibility:
+    get:
+      summary: Check student enrollment and event eligibility (C1)
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+        - name: eventId
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Student verification and eligibility result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityResponse"
+              example:
+                studentId: S-001
+                eligible: true
+                name: Alice Santos
+                email: s001@example.test
+                enrollmentStatus: ENROLLED
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Student not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: STUDENT_NOT_FOUND
+                message: Student S-999 was not found in the directory.
+                correlationId: corr-001
+        "422":
+          $ref: "#/components/responses/InvalidPayload"
+
+  /api/v1/events:
+    get:
+      summary: List prototype events
+      responses:
+        "200":
+          description: Event list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/EventRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      summary: Create an event with capacity and eligibility rules (Organizer or Administrator)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventRequest"
+      responses:
+        "201":
+          description: Event created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventRecord"
+        "400":
+          $ref: "#/components/responses/MalformedRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/InvalidPayload"
+
+  /api/v1/events/{eventId}:
+    get:
+      summary: Get single event details
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Event found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventRecord"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/EventNotFound"
+    put:
+      summary: Update an assigned event (Event Organizer or Administrator)
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEventRequest"
+      responses:
+        "200":
+          description: Event updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EventRecord"
+        "400":
+          $ref: "#/components/responses/MalformedRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/EventNotFound"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/InvalidPayload"
+
+  /api/v1/events/{eventId}/registrations:
+    get:
+      summary: List confirmed registrations for an event (Reporting & reconciliation interface)
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [CONFIRMED]
+        - name: studentId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Confirmed registration list (QR tokens excluded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationsListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/EventNotFound"
+        "422":
+          $ref: "#/components/responses/InvalidPayload"
+    post:
+      summary: Register an eligible student for an event and issue an unpredictable QR token (C2, C4)
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistrationRequest"
+            example:
+              studentId: S-001
+      responses:
+        "201":
+          description: Confirmed registration with opaque event-specific QR token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationResponse"
+              example:
+                registrationId: REG-001
+                eventId: EVT-001
+                status: CONFIRMED
+                qrToken: opaque-random-token-value
+        "400":
+          $ref: "#/components/responses/MalformedRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/EventNotFound"
+        "409":
+          description: Duplicate registration or event capacity reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                alreadyRegistered:
+                  value:
+                    code: ALREADY_REGISTERED
+                    message: Student is already registered for this event.
+                    correlationId: corr-002
+                eventFull:
+                  value:
+                    code: EVENT_FULL
+                    message: Event capacity has been reached.
+                    correlationId: corr-003
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          description: Ineligible student or invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                ineligible:
+                  value:
+                    code: INELIGIBLE
+                    message: Student is not eligible for this event.
+                    correlationId: corr-004
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/my/registrations:
+    get:
+      summary: Retrieve authenticated student's own registrations and QR tokens
+      responses:
+        "200":
+          description: Student registrations with QR token for own records
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [studentId, registrations]
+                properties:
+                  studentId:
+                    type: string
+                  registrations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RegistrationResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/registrations/validate:
+    post:
+      summary: Validate an opaque QR token against an event and confirmed registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidateRequest"
+            example:
+              eventId: EVT-001
+              qrToken: T-001
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateResponse"
+              example:
+                registrationId: REG-001
+                eventId: EVT-001
+                status: CONFIRMED
+                valid: true
+        "400":
+          $ref: "#/components/responses/MalformedRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/InvalidPayload"
+
+  /api/v1/events/{eventId}/check-ins:
+    post:
+      summary: Record one event check-in for a confirmed registration (C3, C5)
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckInRequest"
+            example:
+              qrToken: T-001
+      responses:
+        "201":
+          description: Attendance recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckInResponse"
+              example:
+                registrationId: REG-001
+                attendanceStatus: CHECKED_IN
+                checkInTime: "2026-10-01T09:00:00+08:00"
+        "400":
+          $ref: "#/components/responses/MalformedRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Invalid or wrong-event QR token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: INVALID_TOKEN
+                message: QR token is invalid or does not belong to this event.
+                correlationId: corr-005
+        "409":
+          description: Registration already checked in for this event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: ALREADY_CHECKED_IN
+                message: Registration has already been checked in.
+                correlationId: corr-006
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/InvalidPayload"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/events/{eventId}/registrations/{registrationId}/attendance:
+    get:
+      summary: Query attendance status for reconciliation before a safe retry (C6)
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: registrationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current authoritative attendance status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/events/{eventId}/reports/attendance:
+    get:
+      summary: Combined participant and attendance report matched on eventId and registrationId
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Complete combined report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceReportResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/EventNotFound"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/notifications:
+    get:
+      summary: List accepted notifications and delivery statuses (Administrator)
+      responses:
+        "200":
+          description: Notification log list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [notifications]
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Accept a notification request asynchronously (C4)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationRequest"
+            example:
+              type: REGISTRATION_CONFIRMED
+              recipient: s001@example.test
+              eventId: EVT-001
+              registrationId: REG-001
+              deliveryDetails:
+                qrToken: T-001
+      responses:
+        "202":
+          description: Accepted for asynchronous delivery (does not imply delivery succeeded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationResponse"
+              example:
+                notificationId: NOTIF-001
+                status: ACCEPTED
+        "400":
+          $ref: "#/components/responses/MalformedRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/InvalidPayload"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /api/v1/admin/accounts:
+    get:
+      summary: List sample accounts and role/event assignments (Administrator)
+      responses:
+        "200":
+          description: Sample accounts
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      summary: Create a sample account (Administrator)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/InvalidPayload"
+
+  /api/v1/admin/accounts/{accountId}/assignments:
+    put:
+      summary: Update role and assigned events for a sample account (Administrator)
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Assignments updated
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/audit-logs:
+    get:
+      summary: View redacted audit logs across services (Administrator)
+      responses:
+        "200":
+          description: Redacted audit entries
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/admin/audit-logs/purge:
+    post:
+      summary: Purge audit logs older than retention period (30 days default)
+      responses:
+        "200":
+          description: Purge summary
+          content:
+            application/json:
+              schema:
+                type: object
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    sessionBearer:
+      type: http
+      scheme: bearer
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: campus_session
+
+  schemas:
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [code, message, correlationId]
+      properties:
+        code:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+        correlationId:
+          type: string
+          minLength: 1
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+
+    SessionUser:
+      type: object
+      required: [accountId, username, role, assignedEventIds]
+      properties:
+        accountId:
+          type: string
+        username:
+          type: string
+        role:
+          type: string
+          enum: [STUDENT, EVENT_ORGANIZER, CHECK_IN_STAFF, ADMINISTRATOR]
+        studentId:
+          type: ["string", "null"]
+        assignedEventIds:
+          type: array
+          items:
+            type: string
+
+    LoginResponse:
+      type: object
+      required: [sessionToken, expiresAt, user]
+      properties:
+        sessionToken:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/SessionUser"
+
+    EligibilityResponse:
+      type: object
+      additionalProperties: false
+      required: [studentId, eligible, name, email, enrollmentStatus]
+      properties:
+        studentId:
+          type: string
+          minLength: 1
+        eligible:
+          type: boolean
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          minLength: 1
+        enrollmentStatus:
+          type: string
+          minLength: 1
+
+    EventRecord:
+      type: object
+      required: [eventId, title, capacity, confirmedCount, remainingSlots, eligibleStatuses, createdAt]
+      properties:
+        eventId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        capacity:
+          type: integer
+          minimum: 1
+        confirmedCount:
+          type: integer
+          minimum: 0
+        remainingSlots:
+          type: integer
+          minimum: 0
+        eligibleStatuses:
+          type: array
+          items:
+            type: string
+        startsAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateEventRequest:
+      type: object
+      additionalProperties: false
+      required: [title, capacity]
+      properties:
+        eventId:
+          type: string
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        capacity:
+          type: integer
+          minimum: 1
+        eligibleStatuses:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        startsAt:
+          type: string
+          format: date-time
+
+    UpdateEventRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        capacity:
+          type: integer
+          minimum: 1
+        eligibleStatuses:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        startsAt:
+          type: string
+          format: date-time
+
+    RegistrationRequest:
+      type: object
+      additionalProperties: false
+      required: [studentId]
+      properties:
+        studentId:
+          type: string
+          minLength: 1
+
+    RegistrationResponse:
+      type: object
+      additionalProperties: false
+      required: [registrationId, eventId, status, qrToken]
+      properties:
+        registrationId:
+          type: string
+          minLength: 1
+        eventId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum: [CONFIRMED]
+        qrToken:
+          type: string
+          minLength: 1
+
+    ValidateRequest:
+      type: object
+      additionalProperties: false
+      required: [eventId, qrToken]
+      properties:
+        eventId:
+          type: string
+          minLength: 1
+        qrToken:
+          type: string
+          minLength: 1
+
+    ValidateResponse:
+      type: object
+      additionalProperties: false
+      required: [registrationId, eventId, status, valid]
+      properties:
+        registrationId:
+          type: ["string", "null"]
+        eventId:
+          type: string
+          minLength: 1
+        status:
+          type: ["string", "null"]
+        valid:
+          type: boolean
+        recipient:
+          type: ["string", "null"]
+
+    CheckInRequest:
+      type: object
+      additionalProperties: false
+      required: [qrToken]
+      properties:
+        qrToken:
+          type: string
+          minLength: 1
+
+    CheckInResponse:
+      type: object
+      additionalProperties: false
+      required: [registrationId, attendanceStatus, checkInTime]
+      properties:
+        registrationId:
+          type: string
+          minLength: 1
+        attendanceStatus:
+          type: string
+          enum: [CHECKED_IN]
+        checkInTime:
+          type: string
+          format: date-time
+
+    NotificationRequest:
+      type: object
+      additionalProperties: false
+      required: [type, recipient, eventId, registrationId, deliveryDetails]
+      properties:
+        type:
+          type: string
+          enum: [REGISTRATION_CONFIRMED, QR_ISSUED, REMINDER, CANCELLATION, CHECK_IN_CONFIRMED]
+        recipient:
+          type: string
+          minLength: 1
+        eventId:
+          type: string
+          minLength: 1
+        registrationId:
+          type: string
+          minLength: 1
+        deliveryDetails:
+          type: object
+
+    NotificationResponse:
+      type: object
+      additionalProperties: false
+      required: [notificationId, status]
+      properties:
+        notificationId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum: [ACCEPTED]
+
+    RegistrationsListResponse:
+      type: object
+      additionalProperties: false
+      required: [eventId, registrations]
+      properties:
+        eventId:
+          type: string
+          minLength: 1
+        registrations:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [registrationId, studentId, status]
+            properties:
+              registrationId:
+                type: string
+                minLength: 1
+              studentId:
+                type: string
+                minLength: 1
+              status:
+                type: string
+                enum: [CONFIRMED]
+
+    AttendanceStatusResponse:
+      type: object
+      additionalProperties: false
+      required: [eventId, registrationId, checkedIn, checkInTime]
+      properties:
+        eventId:
+          type: string
+          minLength: 1
+        registrationId:
+          type: string
+          minLength: 1
+        checkedIn:
+          type: boolean
+        checkInTime:
+          type: ["string", "null"]
+          format: date-time
+
+    AttendanceReportResponse:
+      type: object
+      additionalProperties: false
+      required: [eventId, participants, registeredCount, checkedInCount, notCheckedInCount]
+      properties:
+        eventId:
+          type: string
+          minLength: 1
+        participants:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [registrationId, studentId, registrationStatus, checkedIn, checkInTime]
+            properties:
+              registrationId:
+                type: string
+                minLength: 1
+              studentId:
+                type: string
+                minLength: 1
+              registrationStatus:
+                type: string
+                enum: [CONFIRMED]
+              checkedIn:
+                type: boolean
+              checkInTime:
+                type: ["string", "null"]
+                format: date-time
+        registeredCount:
+          type: integer
+          minimum: 0
+        checkedInCount:
+          type: integer
+          minimum: 0
+        notCheckedInCount:
+          type: integer
+          minimum: 0
+
+  responses:
+    MalformedRequest:
+      description: Malformed JSON body
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: MALFORMED_REQUEST
+            message: Request body is not valid JSON.
+            correlationId: corr-400
+    Unauthorized:
+      description: Missing or expired credentials
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: UNAUTHORIZED
+            message: Authentication credentials are missing or expired.
+            correlationId: corr-401
+    Forbidden:
+      description: Authenticated caller is not permitted to perform this operation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: FORBIDDEN
+            message: You do not have permission to perform this operation.
+            correlationId: corr-403
+    EventNotFound:
+      description: Event not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: EVENT_NOT_FOUND
+            message: Event was not found.
+            correlationId: corr-404
+    UnsupportedMediaType:
+      description: Unsupported request content type
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: UNSUPPORTED_MEDIA_TYPE
+            message: Content-Type must be application/json.
+            correlationId: corr-415
+    InvalidPayload:
+      description: Missing required fields, incorrect types, empty required values, or unsupported values
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: INVALID_PAYLOAD
+            message: Payload validation failed.
+            correlationId: corr-422
+    ServiceUnavailable:
+      description: Required downstream service is unavailable or timed out
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: SERVICE_UNAVAILABLE
+            message: Required dependency is unavailable.
+            correlationId: corr-503

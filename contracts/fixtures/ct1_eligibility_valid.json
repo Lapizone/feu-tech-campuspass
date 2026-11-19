@@ -1,0 +1,7 @@
+{
+  "studentId": "S-001",
+  "eligible": true,
+  "name": "Alice Santos",
+  "email": "s001@example.test",
+  "enrollmentStatus": "ENROLLED"
+}

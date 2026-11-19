@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NotificationResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["notificationId", "status"],
+  "properties": {
+    "notificationId": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["ACCEPTED"] }
+  }
+}

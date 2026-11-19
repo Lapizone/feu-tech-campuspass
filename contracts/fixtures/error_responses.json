@@ -1,0 +1,62 @@
+{
+  "malformedRequest": {
+    "code": "MALFORMED_REQUEST",
+    "message": "Request body is not valid JSON.",
+    "correlationId": "corr-400"
+  },
+  "unauthorized": {
+    "code": "UNAUTHORIZED",
+    "message": "Missing or expired credentials.",
+    "correlationId": "corr-401"
+  },
+  "forbidden": {
+    "code": "FORBIDDEN",
+    "message": "Operation outside caller permissions.",
+    "correlationId": "corr-403"
+  },
+  "studentNotFound": {
+    "code": "STUDENT_NOT_FOUND",
+    "message": "Student was not found.",
+    "correlationId": "corr-404-student"
+  },
+  "invalidToken": {
+    "code": "INVALID_TOKEN",
+    "message": "QR token is invalid or does not belong to this event.",
+    "correlationId": "corr-404-token"
+  },
+  "alreadyRegistered": {
+    "code": "ALREADY_REGISTERED",
+    "message": "Student is already registered for this event.",
+    "correlationId": "corr-409-reg"
+  },
+  "eventFull": {
+    "code": "EVENT_FULL",
+    "message": "Event capacity has been reached.",
+    "correlationId": "corr-409-full"
+  },
+  "alreadyCheckedIn": {
+    "code": "ALREADY_CHECKED_IN",
+    "message": "Registration is already checked in for this event.",
+    "correlationId": "corr-409-checkin"
+  },
+  "unsupportedMediaType": {
+    "code": "UNSUPPORTED_MEDIA_TYPE",
+    "message": "Content-Type must be application/json.",
+    "correlationId": "corr-415"
+  },
+  "invalidPayload": {
+    "code": "INVALID_PAYLOAD",
+    "message": "Missing or invalid request fields.",
+    "correlationId": "corr-422-payload"
+  },
+  "ineligible": {
+    "code": "INELIGIBLE",
+    "message": "Student is not eligible for this event.",
+    "correlationId": "corr-422-ineligible"
+  },
+  "serviceUnavailable": {
+    "code": "SERVICE_UNAVAILABLE",
+    "message": "Required downstream service is unavailable.",
+    "correlationId": "corr-503"
+  }
+}

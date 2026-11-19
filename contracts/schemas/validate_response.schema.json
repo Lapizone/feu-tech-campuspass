@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ValidateResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registrationId", "eventId", "status", "valid"],
+  "properties": {
+    "registrationId": { "type": ["string", "null"] },
+    "eventId": { "type": "string", "minLength": 1 },
+    "status": { "type": ["string", "null"] },
+    "valid": { "type": "boolean" },
+    "recipient": { "type": ["string", "null"] }
+  }
+}

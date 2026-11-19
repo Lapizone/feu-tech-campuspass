@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RegistrationResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["registrationId", "eventId", "status", "qrToken"],
+  "properties": {
+    "registrationId": { "type": "string", "minLength": 1 },
+    "eventId": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["CONFIRMED"] },
+    "qrToken": { "type": "string", "minLength": 1 }
+  }
+}

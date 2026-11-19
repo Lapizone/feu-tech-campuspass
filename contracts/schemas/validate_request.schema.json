@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ValidateRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "qrToken"],
+  "properties": {
+    "eventId": { "type": "string", "minLength": 1 },
+    "qrToken": { "type": "string", "minLength": 1 }
+  }
+}

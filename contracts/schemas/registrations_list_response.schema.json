@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RegistrationsListResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "registrations"],
+  "properties": {
+    "eventId": { "type": "string", "minLength": 1 },
+    "registrations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["registrationId", "studentId", "status"],
+        "properties": {
+          "registrationId": { "type": "string", "minLength": 1 },
+          "studentId": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["CONFIRMED"] }
+        }
+      }
+    }
+  }
+}

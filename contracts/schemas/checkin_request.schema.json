@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CheckInRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["qrToken"],
+  "properties": {
+    "qrToken": { "type": "string", "minLength": 1 }
+  }
+}

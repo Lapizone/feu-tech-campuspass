@@ -1,0 +1,15 @@
+{
+  "request": {
+    "type": "REGISTRATION_CONFIRMED",
+    "recipient": "s001@example.test",
+    "eventId": "EVT-001",
+    "registrationId": "REG-001",
+    "deliveryDetails": {
+      "qrToken": "T-001"
+    }
+  },
+  "response": {
+    "notificationId": "NOTIF-001",
+    "status": "ACCEPTED"
+  }
+}

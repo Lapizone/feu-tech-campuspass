@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AttendanceReportResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "participants",
+    "registeredCount",
+    "checkedInCount",
+    "notCheckedInCount"
+  ],
+  "properties": {
+    "eventId": { "type": "string", "minLength": 1 },
+    "participants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "registrationId",
+          "studentId",
+          "registrationStatus",
+          "checkedIn",
+          "checkInTime"
+        ],
+        "properties": {
+          "registrationId": { "type": "string", "minLength": 1 },
+          "studentId": { "type": "string", "minLength": 1 },
+          "registrationStatus": { "type": "string", "enum": ["CONFIRMED"] },
+          "checkedIn": { "type": "boolean" },
+          "checkInTime": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "registeredCount": { "type": "integer", "minimum": 0 },
+    "checkedInCount": { "type": "integer", "minimum": 0 },
+    "notCheckedInCount": { "type": "integer", "minimum": 0 }
+  }
+}

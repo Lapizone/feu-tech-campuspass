@@ -1,0 +1,139 @@
+{
+  "students": [
+    {
+      "studentId": "S-001",
+      "name": "Alice Santos",
+      "email": "s001@example.test",
+      "enrollmentStatus": "ENROLLED",
+      "ineligibleEventIds": []
+    },
+    {
+      "studentId": "S-002",
+      "name": "Ben Cruz",
+      "email": "s002@example.test",
+      "enrollmentStatus": "ENROLLED",
+      "ineligibleEventIds": []
+    },
+    {
+      "studentId": "S-003",
+      "name": "Cara Reyes",
+      "email": "s003@example.test",
+      "enrollmentStatus": "ENROLLED",
+      "ineligibleEventIds": []
+    },
+    {
+      "studentId": "S-004",
+      "name": "Dan Lim",
+      "email": "s004@example.test",
+      "enrollmentStatus": "ON_LEAVE",
+      "ineligibleEventIds": []
+    },
+    {
+      "studentId": "S-005",
+      "name": "Eva Tan",
+      "email": "s005@example.test",
+      "enrollmentStatus": "ENROLLED",
+      "ineligibleEventIds": ["EVT-001"]
+    }
+  ],
+  "events": [
+    {
+      "eventId": "EVT-001",
+      "title": "Campus Systems Integration Seminar",
+      "description": "Two-seat capacity seminar demonstrating registration limits, QR issuance, check-in validation, and outage recovery.",
+      "capacity": 2,
+      "eligibleStatuses": ["ENROLLED"],
+      "startsAt": "2026-10-01T09:00:00+08:00"
+    },
+    {
+      "eventId": "EVT-002",
+      "title": "Annual Student Tech Workshop",
+      "description": "Hands-on campus workshop for enrolled students across all departments.",
+      "capacity": 50,
+      "eligibleStatuses": ["ENROLLED"],
+      "startsAt": "2026-10-15T13:30:00+08:00"
+    }
+  ],
+  "accounts": [
+    {
+      "accountId": "ACC-S001",
+      "username": "student_s001",
+      "password": "Password123!",
+      "role": "STUDENT",
+      "studentId": "S-001",
+      "assignedEventIds": []
+    },
+    {
+      "accountId": "ACC-S002",
+      "username": "student_s002",
+      "password": "Password123!",
+      "role": "STUDENT",
+      "studentId": "S-002",
+      "assignedEventIds": []
+    },
+    {
+      "accountId": "ACC-S003",
+      "username": "student_s003",
+      "password": "Password123!",
+      "role": "STUDENT",
+      "studentId": "S-003",
+      "assignedEventIds": []
+    },
+    {
+      "accountId": "ACC-S004",
+      "username": "student_s004",
+      "password": "Password123!",
+      "role": "STUDENT",
+      "studentId": "S-004",
+      "assignedEventIds": []
+    },
+    {
+      "accountId": "ACC-S005",
+      "username": "student_s005",
+      "password": "Password123!",
+      "role": "STUDENT",
+      "studentId": "S-005",
+      "assignedEventIds": []
+    },
+    {
+      "accountId": "ACC-ORG1",
+      "username": "organizer1",
+      "password": "Password123!",
+      "role": "EVENT_ORGANIZER",
+      "studentId": null,
+      "assignedEventIds": ["EVT-001", "EVT-002"]
+    },
+    {
+      "accountId": "ACC-ORG2",
+      "username": "organizer2",
+      "password": "Password123!",
+      "role": "EVENT_ORGANIZER",
+      "studentId": null,
+      "assignedEventIds": ["EVT-002"]
+    },
+    {
+      "accountId": "ACC-SCN1",
+      "username": "scanner1",
+      "password": "Password123!",
+      "role": "CHECK_IN_STAFF",
+      "studentId": null,
+      "assignedEventIds": ["EVT-001", "EVT-002"]
+    },
+    {
+      "accountId": "ACC-SCN2",
+      "username": "scanner2",
+      "password": "Password123!",
+      "role": "CHECK_IN_STAFF",
+      "studentId": null,
+      "assignedEventIds": ["EVT-002"]
+    },
+    {
+      "accountId": "ACC-ADM1",
+      "username": "admin1",
+      "password": "AdminPassword123!",
+      "role": "ADMINISTRATOR",
+      "studentId": null,
+      "assignedEventIds": ["EVT-001", "EVT-002"]
+    }
+  ]
+}

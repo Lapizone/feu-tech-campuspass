@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EligibilityResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["studentId", "eligible", "name", "email", "enrollmentStatus"],
+  "properties": {
+    "studentId": { "type": "string", "minLength": 1 },
+    "eligible": { "type": "boolean" },
+    "name": { "type": "string", "minLength": 1 },
+    "email": { "type": "string", "minLength": 1 },
+    "enrollmentStatus": { "type": "string", "minLength": 1 }
+  }
+}
