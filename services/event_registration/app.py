@@ -113,6 +113,7 @@ def create_app(
     repository: SqliteEventRegistrationRepository | None = None,
     directory_http_client: httpx.AsyncClient | None = None,
     notification_http_client: httpx.AsyncClient | None = None,
+    enable_notifications: bool = True,
 ) -> FastAPI:
     """Create and configure the Event Registration FastAPI microservice."""
     cfg = settings or load_settings()
@@ -142,7 +143,7 @@ def create_app(
             audit=audit,
             failure_recorder=repo.record_failed_notification,
         )
-    elif cfg.notification_service_url:
+    elif enable_notifications and cfg.notification_service_url:
         owns_notif_client = True
         notif_http = httpx.AsyncClient(
             base_url=cfg.notification_service_url,
@@ -160,7 +161,7 @@ def create_app(
     app = FastAPI(title="Event Registration Service", version="1.0.0")
     app.add_middleware(JsonBoundaryMiddleware)
     app.add_middleware(CorrelationIdMiddleware)
-    register_exception_handlers(app)
+    register_exception_handlers(app, audit=audit)
 
     @app.on_event("shutdown")
     async def shutdown_clients() -> None:
@@ -390,7 +391,7 @@ def create_app(
             actor_id=actor["accountId"],
             event_id=clean_event,
             registration_id=created["registrationId"],
-            details={"studentId": body.studentId, "qrToken": created["qrToken"]},
+            details={"studentId": body.studentId},
         )
 
         # Notification failure must never reverse an already committed registration.

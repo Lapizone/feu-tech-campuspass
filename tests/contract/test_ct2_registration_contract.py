@@ -47,6 +47,7 @@ def test_ct2_confirmed_registration_producer_and_consumer_share_schema(tmp_path)
         settings,
         directory_http_client=dir_http,
         notification_http_client=None,
+        enable_notifications=False,
     )
     reg_client = TestClient(reg_app)
 

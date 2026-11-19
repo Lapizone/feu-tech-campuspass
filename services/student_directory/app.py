@@ -31,7 +31,7 @@ def create_app(
     app = FastAPI(title="Student Directory Service", version="1.0.0")
     app.add_middleware(JsonBoundaryMiddleware)
     app.add_middleware(CorrelationIdMiddleware)
-    register_exception_handlers(app)
+    register_exception_handlers(app, audit=audit)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

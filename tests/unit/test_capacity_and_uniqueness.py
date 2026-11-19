@@ -54,7 +54,9 @@ def test_duplicate_registration_capacity_limit_and_ineligibility_rules(tmp_path)
         transport=httpx.ASGITransport(app=dir_app),
         base_url="https://dir.local",
     )
-    reg_app = create_registration_app(settings, directory_http_client=dir_http)
+    reg_app = create_registration_app(
+        settings, directory_http_client=dir_http, enable_notifications=False
+    )
     client = TestClient(reg_app)
 
     # S-004 (ON_LEAVE) and S-005 (ineligible for EVT-001) get 422 INELIGIBLE

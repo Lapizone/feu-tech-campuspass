@@ -1,0 +1,1 @@
+"""Attendance microservice package."""

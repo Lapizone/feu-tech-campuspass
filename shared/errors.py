@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -50,12 +52,22 @@ def get_correlation_id(request: Request) -> str:
     return header_cid or "corr-unknown"
 
 
-def register_exception_handlers(app: FastAPI) -> None:
+def register_exception_handlers(app: FastAPI, audit: Any | None = None) -> None:
     """Attach uniform error envelope handlers to a FastAPI instance."""
 
     @app.exception_handler(ServiceError)
     async def handle_service_error(request: Request, exc: ServiceError) -> JSONResponse:
         cid = get_correlation_id(request)
+        if audit is not None and exc.status_code in (401, 403):
+            action = "REJECTED_CREDENTIALS" if exc.status_code == 401 else "DENIED_OPERATION"
+            audit.record(
+                correlation_id=cid,
+                category="Authentication and authorization",
+                action=action,
+                outcome="DENIED",
+                error_code=exc.code,
+                details={"method": request.method, "path": request.url.path},
+            )
         return JSONResponse(
             status_code=exc.status_code,
             content=exc.to_dict(fallback_correlation_id=cid),
