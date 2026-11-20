@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
 
@@ -21,6 +22,8 @@ def main() -> None:
         )
     factory, port_str, cert_path, key_path = sys.argv[1:5]
     ensure_stdlib_ssl_context()
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     uvicorn.run(
         factory,
         factory=True,
@@ -29,6 +32,9 @@ def main() -> None:
         ssl_certfile=cert_path,
         ssl_keyfile=key_path,
         log_level="warning",
+        access_log=False,
+        timeout_keep_alive=15,
+        loop="asyncio",
     )
 
 

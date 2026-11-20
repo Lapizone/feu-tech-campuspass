@@ -167,6 +167,7 @@ def create_app(
     dir_http = directory_http_client or httpx.AsyncClient(
         base_url=cfg.student_directory_url,
         verify=ssl_verify,
+        trust_env=False,
     )
     dir_client = DirectoryClient(dir_http, cfg)
 
@@ -186,6 +187,7 @@ def create_app(
         notif_http = httpx.AsyncClient(
             base_url=cfg.notification_service_url,
             verify=ssl_verify,
+            trust_env=False,
         )
         notif_client = NotificationDispatchClient(
             notif_http,

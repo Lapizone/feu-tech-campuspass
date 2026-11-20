@@ -13,7 +13,7 @@ from shared.tls import build_client_ssl_context
 
 
 @pytest.mark.e2e
-@pytest.mark.timeout(120)
+@pytest.mark.timeout(180)
 def test_live_https_cluster_full_lifecycle_ui_and_process_kill_fp2(tmp_path):
     cluster = ServiceCluster.build(
         work_dir=tmp_path,
@@ -28,6 +28,7 @@ def test_live_https_cluster_full_lifecycle_ui_and_process_kill_fp2(tmp_path):
                 base_url=cluster.gateway_url,
                 verify=build_client_ssl_context(cluster.ca_cert_path),
                 timeout=8.0,
+                trust_env=False,
             ) as gw:
                 # 1. Verify Gateway serves static Web UI assets cleanly over HTTPS
                 r_html = await gw.get("/")

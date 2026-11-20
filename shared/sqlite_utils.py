@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
+_WAL_LOCK = threading.Lock()
+_WAL_INITIALIZED: set[str] = set()
+
 
 def open_connection(db_path: Path | str) -> sqlite3.Connection:
     """Open an isolated SQLite connection configured with WAL mode and busy timeout."""
-    path = Path(db_path)
+    path = Path(db_path).resolve()
+    existed_before = path.exists()
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(
         str(path),
@@ -19,7 +24,11 @@ def open_connection(db_path: Path | str) -> sqlite3.Connection:
         check_same_thread=False,
     )
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL;")
+    db_key = str(path)
+    with _WAL_LOCK:
+        if not existed_before or db_key not in _WAL_INITIALIZED:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            _WAL_INITIALIZED.add(db_key)
     conn.execute("PRAGMA synchronous=NORMAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     conn.execute("PRAGMA busy_timeout=5000;")

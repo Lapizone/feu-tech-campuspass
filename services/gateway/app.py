@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -116,16 +117,16 @@ def create_app(
     )
 
     dir_http = directory_http_client or httpx.AsyncClient(
-        base_url=cfg.student_directory_url, verify=ssl_verify
+        base_url=cfg.student_directory_url, verify=ssl_verify, trust_env=False
     )
     reg_http = registration_http_client or httpx.AsyncClient(
-        base_url=cfg.event_registration_url, verify=ssl_verify
+        base_url=cfg.event_registration_url, verify=ssl_verify, trust_env=False
     )
     att_http = attendance_http_client or httpx.AsyncClient(
-        base_url=cfg.attendance_service_url, verify=ssl_verify
+        base_url=cfg.attendance_service_url, verify=ssl_verify, trust_env=False
     )
     notif_http = notification_http_client or httpx.AsyncClient(
-        base_url=cfg.notification_service_url, verify=ssl_verify
+        base_url=cfg.notification_service_url, verify=ssl_verify, trust_env=False
     )
 
     backend_clients: dict[str, httpx.AsyncClient] = {
@@ -275,7 +276,9 @@ def create_app(
     @app.post("/api/v1/auth/login")
     async def login(body: LoginRequest, request: Request) -> JSONResponse:
         cid = get_correlation_id(request)
-        session = repo.authenticate_and_create_session(body.username, body.password)
+        session = await asyncio.to_thread(
+            repo.authenticate_and_create_session, body.username, body.password
+        )
         if not session:
             audit.record(
                 correlation_id=cid,
@@ -694,7 +697,6 @@ def create_app(
         require_user_permission(user_ctx, {ROLE_ADMINISTRATOR}, cid)
 
         combined = list(audit.list_logs(limit=limit))
-        unavailable: list[str] = []
         headers = build_service_headers(
             service_id="gateway",
             service_secret=cfg.gateway_service_secret,
@@ -702,7 +704,8 @@ def create_app(
             user_ctx=user_ctx,
             context_hmac_key=cfg.context_hmac_key,
         )
-        for svc_name, client in backend_clients.items():
+
+        async def _fetch_logs(svc_name: str, client: httpx.AsyncClient) -> tuple[str, list[dict[str, Any]] | None]:
             try:
                 resp = await client.get(
                     "/api/v1/internal/audit-logs",
@@ -711,11 +714,19 @@ def create_app(
                     timeout=cfg.client_wait_timeout_sec,
                 )
                 if resp.status_code == 200:
-                    combined.extend(resp.json().get("logs", []))
-                else:
-                    unavailable.append(svc_name)
-            except (httpx.TimeoutException, httpx.TransportError):
+                    return svc_name, resp.json().get("logs", [])
+                return svc_name, None
+            except (httpx.TimeoutException, httpx.TransportError, ValueError):
+                return svc_name, None
+
+        unavailable: list[str] = []
+        for svc_name, svc_logs in await asyncio.gather(
+            *(_fetch_logs(svc_name, client) for svc_name, client in backend_clients.items())
+        ):
+            if svc_logs is None:
                 unavailable.append(svc_name)
+            else:
+                combined.extend(svc_logs)
 
         combined.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
         return {
@@ -739,7 +750,8 @@ def create_app(
             user_ctx=user_ctx,
             context_hmac_key=cfg.context_hmac_key,
         )
-        for svc_name, client in backend_clients.items():
+
+        async def _purge_svc(svc_name: str, client: httpx.AsyncClient) -> tuple[str, int | None]:
             try:
                 resp = await client.post(
                     "/api/v1/internal/audit-logs/purge",
@@ -747,9 +759,16 @@ def create_app(
                     timeout=cfg.client_wait_timeout_sec,
                 )
                 if resp.status_code == 200:
-                    results[svc_name] = int(resp.json().get("deletedCount", 0))
-            except (httpx.TimeoutException, httpx.TransportError):
-                results[svc_name] = -1
+                    return svc_name, int(resp.json().get("deletedCount", 0))
+                return svc_name, None
+            except (httpx.TimeoutException, httpx.TransportError, ValueError):
+                return svc_name, -1
+
+        for svc_name, deleted in await asyncio.gather(
+            *(_purge_svc(svc_name, client) for svc_name, client in backend_clients.items())
+        ):
+            if deleted is not None:
+                results[svc_name] = deleted
         return {"retentionDays": cfg.audit_retention_days, "deletedByService": results}
 
     @app.get("/api/v1/admin/failed-notifications")
@@ -765,12 +784,8 @@ def create_app(
             user_ctx=user_ctx,
             context_hmac_key=cfg.context_hmac_key,
         )
-        failures: list[dict[str, Any]] = []
-        unavailable: list[str] = []
-        for svc_name, client in (
-            ("event-registration", reg_http),
-            ("attendance-service", att_http),
-        ):
+
+        async def _fetch_failed(svc_name: str, client: httpx.AsyncClient) -> tuple[str, list[dict[str, Any]] | None]:
             try:
                 resp = await client.get(
                     "/api/v1/internal/failed-notifications",
@@ -778,12 +793,24 @@ def create_app(
                     timeout=cfg.client_wait_timeout_sec,
                 )
                 if resp.status_code == 200:
-                    for item in resp.json().get("failedNotifications", []):
-                        failures.append({"service": svc_name, **item})
-                else:
-                    unavailable.append(svc_name)
-            except (httpx.TimeoutException, httpx.TransportError):
+                    return svc_name, [
+                        {"service": svc_name, **item}
+                        for item in resp.json().get("failedNotifications", [])
+                    ]
+                return svc_name, None
+            except (httpx.TimeoutException, httpx.TransportError, ValueError):
+                return svc_name, None
+
+        failures: list[dict[str, Any]] = []
+        unavailable: list[str] = []
+        for svc_name, svc_failures in await asyncio.gather(
+            _fetch_failed("event-registration", reg_http),
+            _fetch_failed("attendance-service", att_http),
+        ):
+            if svc_failures is None:
                 unavailable.append(svc_name)
+            else:
+                failures.extend(svc_failures)
         return {"failedNotifications": failures, "unavailableServices": unavailable}
 
     @app.get("/api/v1/admin/service-health")
@@ -792,15 +819,20 @@ def create_app(
         _, user_ctx = _require_session(request)
         require_user_permission(user_ctx, {ROLE_ADMINISTRATOR}, cid)
 
-        statuses: dict[str, str] = {"gateway": "ok"}
-        for svc_name, client in backend_clients.items():
+        async def _probe(svc_name: str, client: httpx.AsyncClient) -> tuple[str, str]:
             try:
                 resp = await client.get("/health", timeout=2.0)
-                statuses[svc_name] = (
+                return svc_name, (
                     "ok" if resp.status_code == 200 else f"error ({resp.status_code})"
                 )
             except (httpx.TimeoutException, httpx.TransportError):
-                statuses[svc_name] = "unavailable"
+                return svc_name, "unavailable"
+
+        statuses: dict[str, str] = {"gateway": "ok"}
+        for svc_name, status in await asyncio.gather(
+            *(_probe(svc_name, client) for svc_name, client in backend_clients.items())
+        ):
+            statuses[svc_name] = status
         return {"services": statuses}
 
     app.state.settings = cfg

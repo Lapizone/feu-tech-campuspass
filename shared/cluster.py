@@ -6,9 +6,12 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -32,6 +35,21 @@ def find_free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def _drain_stream(stream: Any, buffer: deque[str], lock: threading.Lock) -> None:
+    """Continuously drain child stderr pipe so Windows 4KB pipe buffers never block uvicorn."""
+    try:
+        for line in stream:
+            with lock:
+                buffer.append(line.rstrip("\r\n"))
+    except Exception:
+        pass
+    finally:
+        try:
+            stream.close()
+        except OSError:
+            pass
+
+
 @dataclass
 class ManagedService:
     """A running HTTPS uvicorn child process."""
@@ -40,6 +58,9 @@ class ManagedService:
     factory: str
     port: int
     process: subprocess.Popen[str]
+    stderr_lines: deque[str] = field(default_factory=lambda: deque(maxlen=200))
+    stderr_lock: threading.Lock = field(default_factory=threading.Lock)
+    drain_thread: threading.Thread | None = None
 
     @property
     def url(self) -> str:
@@ -129,6 +150,9 @@ class ServiceCluster:
             str(self.certs_dir / "server.crt"),
             str(self.certs_dir / "server.key"),
         ]
+        stderr_lines: deque[str] = deque(maxlen=200)
+        stderr_lock = threading.Lock()
+        drain_thread: threading.Thread | None = None
         proc = subprocess.Popen(
             cmd,
             cwd=str(self.root_dir),
@@ -136,8 +160,25 @@ class ServiceCluster:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
-        svc = ManagedService(name=name, factory=factory, port=port, process=proc)
+        if proc.stderr is not None:
+            drain_thread = threading.Thread(
+                target=_drain_stream,
+                args=(proc.stderr, stderr_lines, stderr_lock),
+                daemon=True,
+            )
+            drain_thread.start()
+        svc = ManagedService(
+            name=name,
+            factory=factory,
+            port=port,
+            process=proc,
+            stderr_lines=stderr_lines,
+            stderr_lock=stderr_lock,
+            drain_thread=drain_thread,
+        )
         self.processes[name] = svc
         if wait_ready:
             self._wait_for_health(svc)
@@ -154,8 +195,6 @@ class ServiceCluster:
             except subprocess.TimeoutExpired:
                 svc.process.kill()
                 svc.process.wait(timeout=5.0)
-        if svc.process.stderr is not None:
-            svc.process.stderr.close()
 
     def start_all(self) -> None:
         for name, _, _ in SERVICE_SPECS:
@@ -167,14 +206,17 @@ class ServiceCluster:
         for name in list(reversed(list(self.processes.keys()))):
             self.stop_service(name)
 
-    def _wait_for_health(self, svc: ManagedService, timeout_sec: float = 45.0) -> None:
+    def _wait_for_health(self, svc: ManagedService, timeout_sec: float = 60.0) -> None:
         deadline = time.monotonic() + timeout_sec
         ssl_ctx = build_client_ssl_context(self.ca_cert_path)
         last_error: Exception | None = None
         with httpx.Client(verify=ssl_ctx, timeout=3.0, trust_env=False) as client:
             while time.monotonic() < deadline:
                 if svc.process.poll() is not None:
-                    stderr_out = svc.process.stderr.read() if svc.process.stderr else ""
+                    if svc.drain_thread is not None:
+                        svc.drain_thread.join(timeout=0.5)
+                    with svc.stderr_lock:
+                        stderr_out = "\n".join(svc.stderr_lines)[-2000:]
                     raise RuntimeError(
                         f"Service '{svc.name}' exited early with code {svc.process.returncode}: {stderr_out}"
                     )

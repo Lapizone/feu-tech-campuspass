@@ -3,40 +3,67 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Campus Event Registration &amp; Attendance Prototype</title>
+  <title>CampusPass · Integrated Event Registration &amp; Attendance</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark" aria-hidden="true">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="7" height="7" rx="1"/>
-          <rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/>
-          <path d="M14 14h3v3h-3zM20 14v7M14 20h3"/>
-        </svg>
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+            <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+            <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+            <path d="M14 14h3v3h-3zM20 14v7M14 20h3"/>
+          </svg>
+        </div>
+        <div class="brand-copy">
+          <div class="brand-title-row">
+            <h1>CampusPass</h1>
+            <span class="env-badge">HTTPS · 5 Services · <code>/api/v1/</code></span>
+          </div>
+          <p>Integrated Campus Event Registration &amp; Venue Check-in System</p>
+        </div>
       </div>
-      <div>
-        <h1>Integrated Campus Event Registration &amp; Attendance</h1>
-        <p>HTTPS Prototype &middot; Versioned <code>/api/v1/</code> Contracts &middot; Independent Service Boundaries</p>
+
+      <div class="session-bar">
+        <span id="session-pill" class="session-pill is-guest">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="session-summary">Not signed in</span>
+        </span>
+        <button id="btn-logout" type="button" class="btn ghost-light sm" style="display:none;">Sign Out</button>
       </div>
-    </div>
-    <div class="session-bar">
-      <span id="session-pill" class="session-pill is-guest">
-        <span class="status-dot" aria-hidden="true"></span>
-        <span id="session-summary">Not signed in</span>
-      </span>
-      <button id="btn-logout" type="button" class="btn secondary" style="display:none;">Sign Out</button>
     </div>
   </header>
 
-  <nav class="nav-tabs" role="tablist" aria-label="Role workspaces">
-    <button type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-auth" data-tab="tab-auth">Sign In</button>
-    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-student" data-tab="tab-student">Student Portal <span class="tab-role">STUDENT</span></button>
-    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-scanner" data-tab="tab-scanner">Check-in Scanner <span class="tab-role">STAFF</span></button>
-    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-organizer" data-tab="tab-organizer">Organizer Dashboard <span class="tab-role">ORGANIZER</span></button>
-    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-admin" data-tab="tab-admin">Administrator Console <span class="tab-role">ADMIN</span></button>
+  <nav class="nav-rail" aria-label="Role workspaces">
+    <div class="nav-tabs" role="tablist">
+      <button type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-auth" data-tab="tab-auth">
+        <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        <span>Sign In</span>
+      </button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-student" data-tab="tab-student">
+        <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h6M7 16h4"/></svg>
+        <span>Student Portal</span>
+        <span class="tab-role">STUDENT</span>
+      </button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-scanner" data-tab="tab-scanner">
+        <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+        <span>Check-in Scanner</span>
+        <span class="tab-role">STAFF</span>
+      </button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-organizer" data-tab="tab-organizer">
+        <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7"/><rect x="12" y="6" width="3" height="11"/><rect x="17" y="13" width="3" height="4"/></svg>
+        <span>Organizer Dashboard</span>
+        <span class="tab-role">ORGANIZER</span>
+      </button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-admin" data-tab="tab-admin">
+        <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.79 1 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>Administrator Console</span>
+        <span class="tab-role">ADMIN</span>
+      </button>
+    </div>
   </nav>
 
   <main class="container">
@@ -44,60 +71,129 @@
 
     <!-- Sign In Panel -->
     <section id="tab-auth" class="panel active" role="tabpanel">
-      <div class="grid-2">
-        <div class="card">
+      <div class="auth-layout">
+        <aside class="card auth-hero">
+          <div class="hero-eyebrow">Campus Integration Architecture</div>
+          <h2>Verified Campus Events, From Registration to Gate.</h2>
+          <p class="hero-copy">
+            Five decoupled HTTPS microservices enforce directory eligibility, atomic capacity locks, opaque HMAC/Fernet QR passes, venue check-in reconciliation, and redacted central telemetry without manual spreadsheets.
+          </p>
+
+          <div class="pipeline-list" aria-label="Integration lifecycle">
+            <div class="pipeline-item">
+              <span class="pipe-idx">01</span>
+              <div>
+                <strong>Directory Eligibility Gate</strong>
+                <span>Queries Student Directory over TLS before reserving a seat.</span>
+              </div>
+            </div>
+            <div class="pipeline-item">
+              <span class="pipe-idx">02</span>
+              <div>
+                <strong>Atomic Slot &amp; Opaque QR Pass</strong>
+                <span>Issues an unpredictable per-registration token &amp; scannable SVG/PNG ticket.</span>
+              </div>
+            </div>
+            <div class="pipeline-item">
+              <span class="pipe-idx">03</span>
+              <div>
+                <strong>Multi-Mode Gate Scanner &amp; Reconciliation</strong>
+                <span>Supports live webcam, QR image upload, or USB wedge with honest <code>503</code> recovery.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-metrics">
+            <div class="hero-stat">
+              <span class="hero-stat-label">Auth</span>
+              <strong>Salted <code>scrypt</code> + RBAC</strong>
+            </div>
+            <div class="hero-stat">
+              <span class="hero-stat-label">Storage</span>
+              <strong>5 Isolated WAL SQLite DBs</strong>
+            </div>
+            <div class="hero-stat">
+              <span class="hero-stat-label">Timeouts</span>
+              <strong>8s Wait · 10s Reports</strong>
+            </div>
+          </div>
+        </aside>
+
+        <div class="card auth-card">
           <div class="card-head">
             <div>
               <h2>Authenticate Sample Account</h2>
-              <p class="muted">Server-validated sessions backed by salted <code>scrypt</code> password hashes over HTTPS.</p>
+              <p class="muted">Select a test persona below or enter custom credentials issued in the Admin Console.</p>
             </div>
           </div>
-          <form id="login-form">
-            <label for="login-username">Username</label>
-            <input id="login-username" name="username" autocomplete="username" required placeholder="e.g. student_s001">
 
-            <label for="login-password">Password</label>
-            <input id="login-password" name="password" type="password" autocomplete="current-password" required placeholder="Password123!">
+          <form id="login-form">
+            <div class="form-row-2">
+              <div>
+                <label for="login-username">Username</label>
+                <input id="login-username" name="username" autocomplete="username" required placeholder="e.g. student_s001">
+              </div>
+              <div>
+                <label for="login-password">Password</label>
+                <div class="input-with-btn">
+                  <input id="login-password" name="password" type="password" autocomplete="current-password" required placeholder="Password123!">
+                  <button id="btn-toggle-password" type="button" class="icon-toggle" aria-label="Toggle password visibility" aria-pressed="false">Show</button>
+                </div>
+              </div>
+            </div>
 
             <div class="row">
-              <button id="btn-login-submit" type="submit" class="btn primary">Sign In</button>
+              <button id="btn-login-submit" type="submit" class="btn primary wide-mobile">Sign In to Workspace</button>
             </div>
           </form>
-        </div>
 
-        <div class="card">
-          <div class="card-head">
-            <div>
-              <h2>Sample Prototype Accounts</h2>
-              <p class="muted">Grouped by role to test eligibility, capacity, check-in, cross-event RBAC, and administration.</p>
+          <div class="persona-section">
+            <div class="chip-group">
+              <div class="chip-group-label"><span class="role-dot dot-student" aria-hidden="true"></span>Students &mdash; Eligibility, Capacity &amp; QR Passes</div>
+              <div class="chip-row">
+                <button type="button" class="btn chip quick-login" data-user="student_s001" data-pass="Password123!">
+                  <strong>student_s001</strong><span>S-001 · Eligible</span>
+                </button>
+                <button type="button" class="btn chip quick-login" data-user="student_s002" data-pass="Password123!">
+                  <strong>student_s002</strong><span>S-002 · Eligible</span>
+                </button>
+                <button type="button" class="btn chip quick-login" data-user="student_s003" data-pass="Password123!">
+                  <strong>student_s003</strong><span>S-003 · Eligible</span>
+                </button>
+                <button type="button" class="btn chip quick-login" data-user="student_s004" data-pass="Password123!">
+                  <strong>student_s004</strong><span>S-004 · ON_LEAVE</span>
+                </button>
+                <button type="button" class="btn chip quick-login" data-user="student_s005" data-pass="Password123!">
+                  <strong>student_s005</strong><span>S-005 · EVT-001 Ineligible</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div class="chip-group">
-            <div class="chip-group-label">Students (Own Identity &amp; QR Pass)</div>
-            <div class="chip-row">
-              <button type="button" class="btn chip quick-login" data-user="student_s001" data-pass="Password123!">student_s001 · S-001 Eligible</button>
-              <button type="button" class="btn chip quick-login" data-user="student_s002" data-pass="Password123!">student_s002 · S-002 Eligible</button>
-              <button type="button" class="btn chip quick-login" data-user="student_s003" data-pass="Password123!">student_s003 · S-003 Eligible</button>
-              <button type="button" class="btn chip quick-login" data-user="student_s004" data-pass="Password123!">student_s004 · ON_LEAVE</button>
-              <button type="button" class="btn chip quick-login" data-user="student_s005" data-pass="Password123!">student_s005 · EVT-001 Ineligible</button>
+            <div class="chip-group">
+              <div class="chip-group-label"><span class="role-dot dot-staff" aria-hidden="true"></span>Venue Scanners &amp; Organizers &mdash; Event-Scoped RBAC</div>
+              <div class="chip-row">
+                <button type="button" class="btn chip quick-login" data-user="scanner1" data-pass="Password123!">
+                  <strong>scanner1</strong><span>EVT-001 &amp; EVT-002</span>
+                </button>
+                <button type="button" class="btn chip quick-login" data-user="scanner2" data-pass="Password123!">
+                  <strong>scanner2</strong><span>EVT-002 Only</span>
+                </button>
+                <button type="button" class="btn chip quick-login" data-user="organizer1" data-pass="Password123!">
+                  <strong>organizer1</strong><span>EVT-001 &amp; EVT-002</span>
+                </button>
+                <button type="button" class="btn chip quick-login" data-user="organizer2" data-pass="Password123!">
+                  <strong>organizer2</strong><span>EVT-002 Only</span>
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div class="chip-group">
-            <div class="chip-group-label">Venue &amp; Event Staff (Event-Scoped)</div>
-            <div class="chip-row">
-              <button type="button" class="btn chip quick-login" data-user="scanner1" data-pass="Password123!">scanner1 · EVT-001 &amp; EVT-002</button>
-              <button type="button" class="btn chip quick-login" data-user="scanner2" data-pass="Password123!">scanner2 · EVT-002 Only</button>
-              <button type="button" class="btn chip quick-login" data-user="organizer1" data-pass="Password123!">organizer1 · EVT-001 &amp; EVT-002</button>
-              <button type="button" class="btn chip quick-login" data-user="organizer2" data-pass="Password123!">organizer2 · EVT-002 Only</button>
-            </div>
-          </div>
-
-          <div class="chip-group">
-            <div class="chip-group-label">Administration</div>
-            <div class="chip-row">
-              <button type="button" class="btn chip quick-login" data-user="admin1" data-pass="AdminPassword123!">admin1 · Full Prototype Scope</button>
+            <div class="chip-group">
+              <div class="chip-group-label"><span class="role-dot dot-admin" aria-hidden="true"></span>System Administration</div>
+              <div class="chip-row">
+                <button type="button" class="btn chip quick-login" data-user="admin1" data-pass="AdminPassword123!">
+                  <strong>admin1</strong><span>Full Health, Accounts &amp; Audit Scope</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -106,17 +202,17 @@
 
     <!-- Student Portal -->
     <section id="tab-student" class="panel" role="tabpanel">
-      <div class="grid-2">
+      <div class="grid-2 student-grid">
         <div class="card">
           <div class="card-head">
             <div>
               <h2>Available Campus Events</h2>
-              <p class="muted">Directory eligibility, duplicate protection, and slot capacity are checked transactionally.</p>
+              <p class="muted">Eligibility, duplicate prevention, and capacity limits are verified live before issuing a ticket.</p>
             </div>
-            <button id="btn-refresh-events" type="button" class="btn secondary">Refresh Events</button>
+            <button id="btn-refresh-events" type="button" class="btn secondary sm">Refresh Events</button>
           </div>
-          <div id="student-events-list">
-            <div class="empty-state">Sign in to inspect campus events and remaining slots.</div>
+          <div id="student-events-list" class="event-card-list">
+            <div class="empty-state">Sign in to inspect campus events and register for an open slot.</div>
           </div>
           <div id="student-register-status" aria-live="polite"></div>
         </div>
@@ -124,13 +220,13 @@
         <div class="card">
           <div class="card-head">
             <div>
-              <h2>My Confirmed Passes &amp; QR Tokens</h2>
-              <p class="muted">One unpredictable, event-specific opaque token is issued per confirmed registration.</p>
+              <h2>My Digital Event Passes</h2>
+              <p class="muted">Present fullscreen at the gate, download a crisp PNG for upload testing, or copy the opaque token.</p>
             </div>
-            <button id="btn-refresh-my-regs" type="button" class="btn secondary">Reload Passes</button>
+            <button id="btn-refresh-my-regs" type="button" class="btn secondary sm">Reload Passes</button>
           </div>
           <div id="my-registrations-list">
-            <div class="empty-state">Confirmed event passes will render here with a scannable QR code.</div>
+            <div class="empty-state">Confirmed event passes will appear here with a scannable QR code.</div>
           </div>
         </div>
       </div>
@@ -141,8 +237,8 @@
       <div class="card">
         <div class="card-head">
           <div>
-            <h2>Venue QR Check-in Scanner</h2>
-            <p class="muted">Two-step contract: pre-validates token to retain <code>registrationId</code>, submits check-in once, and keeps <code>503</code> or timeouts honestly unverified until reconciled.</p>
+            <h2>Venue QR Check-in Kiosk</h2>
+            <p class="muted">Pre-validates tokens to retain <code>registrationId</code>, records check-in once, and keeps <code>503</code> or timeouts unverified until reconciled.</p>
           </div>
         </div>
 
@@ -161,13 +257,59 @@
           </li>
         </ol>
 
-        <div class="grid-2">
-          <div>
-            <label for="scanner-event-id">Assigned Event</label>
+        <div class="grid-2 scanner-grid">
+          <div class="scanner-controls">
+            <label for="scanner-event-id">Assigned Venue Event</label>
             <select id="scanner-event-id"></select>
 
-            <label for="scanner-qr-token">Scanned QR Token</label>
-            <input id="scanner-qr-token" placeholder="Paste or scan opaque QR token">
+            <div class="scanner-deck-head">
+              <span class="field-caption">QR Input Mode</span>
+              <div class="segmented" role="group" aria-label="Scanner input mode">
+                <button type="button" class="seg-btn scanner-mode-btn active" aria-pressed="true" data-scan-mode="manual">Manual / USB</button>
+                <button type="button" class="seg-btn scanner-mode-btn" aria-pressed="false" data-scan-mode="camera">Live Camera</button>
+                <button type="button" class="seg-btn scanner-mode-btn" aria-pressed="false" data-scan-mode="upload">Upload QR Image</button>
+              </div>
+            </div>
+
+            <div id="scanner-pane-camera" class="mode-pane">
+              <div class="camera-stage">
+                <video id="scanner-video" autoplay playsinline muted></video>
+                <canvas id="scanner-canvas" hidden></canvas>
+                <div class="camera-reticle" aria-hidden="true">
+                  <span class="scanline"></span>
+                </div>
+                <div id="camera-idle-hint" class="camera-idle-hint">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  <span>Click Start Camera and hold a Student QR Pass up to the lens.</span>
+                </div>
+              </div>
+              <div class="row" style="margin-top:0.65rem;">
+                <button id="btn-camera-start" type="button" class="btn primary sm">Start Camera</button>
+                <button id="btn-camera-stop" type="button" class="btn secondary sm" disabled>Stop Camera</button>
+                <span id="camera-status" class="muted">Camera idle</span>
+              </div>
+            </div>
+
+            <div id="scanner-pane-upload" class="mode-pane">
+              <label for="scanner-qr-file" id="qr-upload-dropzone" class="upload-dropzone">
+                <input id="scanner-qr-file" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="sr-only">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span><strong>Choose or drop a downloaded QR PNG / Screenshot</strong></span>
+                <span class="muted">Decodes 100% locally in your browser &mdash; no external services required.</span>
+              </label>
+              <div id="qr-upload-preview" class="upload-preview" aria-live="polite"></div>
+            </div>
+
+            <div class="scanner-token-box">
+              <div class="token-row-top">
+                <label for="scanner-qr-token" style="margin:0;">QR Token Payload</label>
+                <label class="inline-check" for="scanner-auto-checkin">
+                  <input id="scanner-auto-checkin" type="checkbox" checked>
+                  <span>Auto check-in after scan</span>
+                </label>
+              </div>
+              <input id="scanner-qr-token" placeholder="Scan with camera, upload QR PNG, or paste token and press Enter">
+            </div>
 
             <div class="row">
               <button id="btn-scanner-checkin" type="button" class="btn primary">Validate &amp; Check In</button>
@@ -176,14 +318,24 @@
             </div>
           </div>
 
-          <div>
-            <h3>Scanner Outcome</h3>
+          <div class="scanner-outcome-col">
+            <h3>Verification &amp; Check-in Outcome</h3>
             <div id="scanner-result" aria-live="polite">
               <div class="alert info">
                 <div>
                   <strong>Awaiting QR Scan</strong>
-                  <div>Select an assigned event and scan or paste a confirmed participant QR token.</div>
+                  <div>Select an assigned event and scan via camera, QR PNG upload, or manual token input.</div>
                 </div>
+              </div>
+            </div>
+
+            <div class="scanner-history-card">
+              <div class="history-head">
+                <h4>Recent Scans (Session)</h4>
+                <span class="muted">Tokens masked</span>
+              </div>
+              <div id="scanner-history">
+                <div class="empty-state">No scans recorded in this session yet.</div>
               </div>
             </div>
           </div>
@@ -198,7 +350,7 @@
           <div class="card-head">
             <div>
               <h2>Event Management</h2>
-              <p class="muted">Create new events or update capacity and eligibility rules for assigned events.</p>
+              <p class="muted">Create new campus events or adjust capacity and eligibility statuses for assigned events.</p>
             </div>
           </div>
 
@@ -266,7 +418,7 @@
           <div class="card-head">
             <div>
               <h2>Combined Participant &amp; Attendance Report</h2>
-              <p class="muted">Reconciles confirmed registrations with recorded check-ins via <code>/api/v1/</code> without partial totals.</p>
+              <p class="muted">Reconciles Registration and Attendance databases live via <code>/api/v1/</code> without partial totals.</p>
             </div>
           </div>
 
@@ -290,12 +442,12 @@
           <div class="card-head">
             <div>
               <h2>Service Health &amp; Audit Retention</h2>
-              <p class="muted">Probes all five HTTPS microservices independently and enforces 30-day audit retention.</p>
+              <p class="muted">Probes all five HTTPS microservices in parallel and enforces 30-day retention purge.</p>
             </div>
           </div>
           <div class="row" style="margin-top:0;">
-            <button id="btn-admin-refresh" type="button" class="btn primary">Refresh Admin Telemetry</button>
-            <button id="btn-admin-purge" type="button" class="btn secondary">Run 30-Day Audit Purge</button>
+            <button id="btn-admin-refresh" type="button" class="btn primary sm">Refresh Admin Telemetry</button>
+            <button id="btn-admin-purge" type="button" class="btn secondary sm">Run 30-Day Audit Purge</button>
           </div>
           <div id="admin-health-output"></div>
         </div>
@@ -304,7 +456,7 @@
           <div class="card-head">
             <div>
               <h2>Account &amp; Assignment Management</h2>
-              <p class="muted">Provision sample accounts or update role and event assignments.</p>
+              <p class="muted">Create prototype accounts or reassign roles and permitted event IDs.</p>
             </div>
           </div>
 
@@ -382,7 +534,7 @@
         <div class="card-head">
           <div>
             <h3>Sample Accounts &amp; Assignments</h3>
-            <p class="muted">Click Edit on any row to modify role or assigned events.</p>
+            <p class="muted">Click Edit on any row to adjust role or assigned event scope.</p>
           </div>
         </div>
         <div id="admin-accounts-output"></div>
@@ -392,7 +544,7 @@
         <div class="card-head">
           <div>
             <h3>Notification Queue &amp; Failed-Notification Review</h3>
-            <p class="muted">Accepted HTTP 202 dispatches plus any retry-exhausted notifications flagged for review.</p>
+            <p class="muted">Accepted HTTP 202 dispatches alongside retry-exhausted notifications flagged for manual follow-up.</p>
           </div>
         </div>
         <div id="admin-notifications-output"></div>
@@ -402,7 +554,10 @@
         <div class="card-head">
           <div>
             <h3>Redacted Audit Logs (Aggregated via HTTPS Interfaces)</h3>
-            <p class="muted">Raw QR tokens, passwords, session secrets, and personal emails are stripped before storage.</p>
+            <p class="muted">Raw QR tokens, passwords, session secrets, and personal emails are automatically stripped prior to storage.</p>
+          </div>
+          <div class="audit-search-wrap">
+            <input id="admin-audit-search" type="search" placeholder="Filter by correlation ID, service, or action...">
           </div>
         </div>
         <div id="admin-audit-filters" class="filter-bar" role="group" aria-label="Filter audit logs by category">
@@ -417,6 +572,21 @@
       </div>
     </section>
   </main>
+
+  <!-- Fullscreen Presentable Pass Modal -->
+  <div id="qr-pass-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title" hidden>
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <span class="modal-eyebrow">Campus Event Entry Pass</span>
+          <h3 id="qr-modal-title">Event Pass</h3>
+        </div>
+        <button id="btn-close-qr-modal" type="button" class="btn secondary sm" aria-label="Close pass modal">Close</button>
+      </div>
+      <div id="qr-modal-svg" class="modal-qr-stage"></div>
+      <div id="qr-modal-meta" class="modal-meta"></div>
+    </div>
+  </div>
 
   <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 

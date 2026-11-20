@@ -1,6 +1,6 @@
 # Section 10 Evidence: Verification & Test Results
 
-Generated: `2026-11-20T15:21:48+08:00`
+Generated: `2026-11-20T16:30:17+08:00`
 
 ## Proposal Six Integration-Focused Test Cases Mapping
 
@@ -76,7 +76,7 @@ tests/interface/test_it1_valid_checkin.py: 2 warnings
 tests/interface/test_it2_registration_notification.py: 1 warning
 tests/interface/test_supporting_interfaces.py: 1 warning
 tests/unit/test_capacity_and_uniqueness.py: 1 warning
-  C:\Users\Lapizone\Documents\Sysinteg\services\event_registration\app.py:204: DeprecationWarning: 
+  C:\Users\Lapizone\Documents\Sysinteg\services\event_registration\app.py:206: DeprecationWarning: 
           on_event is deprecated, use lifespan event handlers instead.
   
           Read more about it in the
@@ -106,7 +106,7 @@ tests/failure_path/test_fp2_attendance_outage.py: 2 warnings
 tests/interface/test_it1_valid_checkin.py: 3 warnings
 tests/interface/test_it2_registration_notification.py: 1 warning
 tests/interface/test_supporting_interfaces.py: 2 warnings
-  C:\Users\Lapizone\Documents\Sysinteg\services\attendance\app.py:102: DeprecationWarning: 
+  C:\Users\Lapizone\Documents\Sysinteg\services\attendance\app.py:104: DeprecationWarning: 
           on_event is deprecated, use lifespan event handlers instead.
   
           Read more about it in the
@@ -118,7 +118,7 @@ tests/failure_path/test_dependency_outages_and_security.py::test_rbac_matrix_cro
 tests/failure_path/test_dependency_outages_and_security.py::test_directory_outage_blocks_registration_with_503_and_creates_no_record
 tests/failure_path/test_fp2_attendance_outage.py::test_fp2_attendance_outage_reconciles_and_retries_safely_recording_one_checkin
 tests/failure_path/test_fp2_attendance_outage.py::test_fp2_lost_response_after_commit_discovers_existing_record_and_persistent_outage_stays_unverified
-  C:\Users\Lapizone\Documents\Sysinteg\services\gateway\app.py:154: DeprecationWarning: 
+  C:\Users\Lapizone\Documents\Sysinteg\services\gateway\app.py:155: DeprecationWarning: 
           on_event is deprecated, use lifespan event handlers instead.
   
           Read more about it in the
@@ -127,5 +127,5 @@ tests/failure_path/test_fp2_attendance_outage.py::test_fp2_lost_response_after_c
     @app.on_event("shutdown")
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-================= 38 passed, 50 warnings in 95.56s (0:01:35) ==================
+================= 38 passed, 50 warnings in 157.95s (0:02:37) =================
 ```

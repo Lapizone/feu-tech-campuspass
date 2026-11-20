@@ -11,6 +11,14 @@
     lastUnverified: null,
     auditLogs: [],
     auditFilter: "ALL",
+    auditSearch: "",
+    scanHistory: [],
+    cameraStream: null,
+    cameraRafId: null,
+    cameraEpoch: 0,
+    cameraCooldownUntil: 0,
+    lastScannedToken: null,
+    modalTrigger: null,
   };
 
   function el(id) {
@@ -129,6 +137,9 @@
   }
 
   function switchTab(tabId) {
+    if (tabId !== "tab-scanner") {
+      stopCameraStream();
+    }
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       const active = btn.dataset.tab === tabId;
       btn.classList.toggle("active", active);
@@ -187,6 +198,50 @@
     el("btn-scanner-retry").style.display = allowRetry ? "inline-flex" : "none";
   }
 
+  function maskToken(token) {
+    const raw = String(token || "");
+    if (raw.length <= 8) return "****";
+    return `…${raw.slice(-6)}`;
+  }
+
+  function recordScanHistory(eventId, token, status, badgeTone) {
+    const nowLabel = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    state.scanHistory.unshift({
+      eventId,
+      tokenSuffix: maskToken(token),
+      status,
+      badgeTone,
+      time: nowLabel,
+    });
+    if (state.scanHistory.length > 8) state.scanHistory.length = 8;
+    renderScanHistory();
+  }
+
+  function renderScanHistory() {
+    const box = el("scanner-history");
+    if (!box) return;
+    if (!state.scanHistory.length) {
+      box.innerHTML = `<div class="empty-state">No scans recorded in this session yet.</div>`;
+      return;
+    }
+    const rows = state.scanHistory
+      .map(
+        (item) => `
+      <tr>
+        <td class="mono-id">${escapeHtml(item.eventId)}</td>
+        <td class="mono-id">${escapeHtml(item.tokenSuffix)}</td>
+        <td><span class="badge ${escapeHtml(item.badgeTone)}">${escapeHtml(item.status)}</span></td>
+        <td class="mono-id">${escapeHtml(item.time)}</td>
+      </tr>`
+      )
+      .join("");
+    box.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Event</th><th>Token</th><th>Status</th><th>Time</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+
   async function refreshEvents() {
     if (!state.user) return;
     const res = await api("GET", "/api/v1/events");
@@ -206,33 +261,44 @@
       return;
     }
     const isStudent = state.user && state.user.role === "STUDENT";
-    const rows = state.events
+    const cards = state.events
       .map((ev) => {
         const confirmed = Number(ev.confirmedCount) || 0;
         const capacity = Number(ev.capacity) || 0;
         const remaining = Number(ev.remainingSlots) || 0;
         const pct = capacity > 0 ? Math.min(100, Math.round((confirmed / capacity) * 100)) : 0;
         const isFull = remaining <= 0;
+        const statusBadges = (ev.eligibleStatuses || [])
+          .map((s) => `<span class="badge info">${escapeHtml(s)}</span>`)
+          .join(" ");
         return `
-        <tr>
-          <td>
-            <strong class="mono-id">${escapeHtml(ev.eventId)}</strong>
-            <div>${escapeHtml(ev.title)}</div>
-          </td>
-          <td class="cap-meter">
-            <div><strong>${escapeHtml(confirmed)} / ${escapeHtml(capacity)}</strong> <span class="muted">(${escapeHtml(remaining)} left)</span></div>
-            <div class="cap-bar"><div class="cap-fill ${isFull ? "is-full" : ""}" style="width:${pct}%"></div></div>
-          </td>
-          <td>${(ev.eligibleStatuses || []).map((s) => `<span class="badge info">${escapeHtml(s)}</span>`).join(" ")}</td>
-          <td>${
-            isStudent
-              ? `<button type="button" class="btn ${isFull ? "secondary" : "primary"} sm btn-register-ev" data-event-id="${escapeHtml(ev.eventId)}">${isFull ? "Full · Try" : "Register"}</button>`
-              : `<span class="badge warn">Student role required</span>`
-          }</td>
-        </tr>`;
+        <article class="event-card ${isFull ? "is-full" : ""}">
+          <div class="event-card-top">
+            <div class="event-card-meta">
+              <div class="event-code-row">
+                <strong class="mono-id badge ${isFull ? "warn" : "info"}">${escapeHtml(ev.eventId)}</strong>
+                ${statusBadges}
+              </div>
+              <h3>${escapeHtml(ev.title)}</h3>
+              ${ev.description ? `<p class="event-desc">${escapeHtml(ev.description)}</p>` : ""}
+            </div>
+            <div>
+              ${
+                isStudent
+                  ? `<button type="button" class="btn ${isFull ? "secondary" : "primary"} sm btn-register-ev" data-event-id="${escapeHtml(ev.eventId)}">${isFull ? "Full · Try" : "Register"}</button>`
+                  : `<span class="badge warn">Student role required</span>`
+              }
+            </div>
+          </div>
+          <div class="event-cap-row">
+            <span><strong>${escapeHtml(confirmed)} / ${escapeHtml(capacity)}</strong> registered</span>
+            <span class="muted">${isFull ? "0 slots remaining" : remaining === 1 ? "1 slot left" : `${escapeHtml(remaining)} slots left`}</span>
+          </div>
+          <div class="cap-bar"><div class="cap-fill ${isFull ? "is-full" : ""}" style="width:${pct}%"></div></div>
+        </article>`;
       })
       .join("");
-    container.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Event</th><th>Capacity</th><th>Eligibility</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    container.innerHTML = cards;
 
     container.querySelectorAll(".btn-register-ev").forEach((btn) => {
       btn.addEventListener("click", () => handleRegister(btn.dataset.eventId, btn));
@@ -328,6 +394,41 @@
     );
   }
 
+  function openPassModal(reg, triggerEl) {
+    const modal = el("qr-pass-modal");
+    if (!modal) return;
+    state.modalTrigger = triggerEl || document.activeElement;
+    const ev = state.events.find((item) => item.eventId === reg.eventId);
+    el("qr-modal-title").textContent = ev ? `${ev.eventId} · ${ev.title}` : reg.eventId;
+    let modalSvg = `<span class="muted">QR preview unavailable</span>`;
+    if (window.CampusQR) {
+      try {
+        modalSvg = window.CampusQR.renderQrSvg(reg.qrToken, 250);
+      } catch (_e) {
+        modalSvg = `<span class="muted">Token exceeds QR preview capacity; copy token manually.</span>`;
+      }
+    }
+    el("qr-modal-svg").innerHTML = modalSvg;
+    el("qr-modal-meta").innerHTML = `
+      <div>Registration: <strong class="mono-id">${escapeHtml(reg.registrationId)}</strong> &middot; <span class="badge ok">${escapeHtml(reg.status)}</span></div>
+      <div class="qr-token-pill" style="margin-top:0.6rem;">${escapeHtml(reg.qrToken)}</div>`;
+    modal.hidden = false;
+    modal.classList.add("active");
+    el("btn-close-qr-modal").focus();
+  }
+
+  function closePassModal() {
+    const modal = el("qr-pass-modal");
+    if (modal) {
+      modal.classList.remove("active");
+      modal.hidden = true;
+    }
+    if (state.modalTrigger && typeof state.modalTrigger.focus === "function") {
+      state.modalTrigger.focus();
+    }
+    state.modalTrigger = null;
+  }
+
   async function refreshMyRegistrations() {
     const container = el("my-registrations-list");
     if (!state.user || state.user.role !== "STUDENT") {
@@ -345,30 +446,63 @@
       return;
     }
     container.innerHTML = regs
-      .map((r) => {
+      .map((r, idx) => {
         let svg = `<span class="muted">QR preview unavailable</span>`;
         if (window.CampusQR) {
           try {
-            svg = window.CampusQR.renderQrSvg(r.qrToken, 150);
+            svg = window.CampusQR.renderQrSvg(r.qrToken, 148);
           } catch (_e) {
             svg = `<span class="muted">Token exceeds QR preview capacity; copy token manually.</span>`;
           }
         }
         return `
-        <div class="qr-card">
-          <div class="qr-frame">${svg}</div>
-          <div class="qr-meta">
-            <div><strong class="mono-id">${escapeHtml(r.eventId)}</strong> &middot; <span class="badge ok">${escapeHtml(r.status)}</span></div>
-            <div class="muted" style="margin-top:0.35rem;">Registration: <span class="mono-id">${escapeHtml(r.registrationId)}</span></div>
-            <div class="muted" style="margin-top:0.35rem;">Opaque QR Token:</div>
-            <div class="mono">${escapeHtml(r.qrToken)}</div>
-            <div class="row">
-              <button type="button" class="btn secondary sm btn-copy-token" data-token="${escapeHtml(r.qrToken)}">Copy Token</button>
+        <article class="qr-card" data-reg-index="${idx}">
+          <div class="qr-ticket-banner">
+            <span class="mono-id">CAMPUS PASS &middot; ${escapeHtml(r.eventId)}</span>
+            <span class="badge ok">${escapeHtml(r.status)}</span>
+          </div>
+          <div class="qr-card-body">
+            <div class="qr-frame">${svg}</div>
+            <div class="qr-meta">
+              <div class="muted">Registration ID: <strong class="mono-id">${escapeHtml(r.registrationId)}</strong></div>
+              <div class="muted" style="margin-top:0.35rem;">Opaque QR Token:</div>
+              <div class="qr-token-pill">${escapeHtml(r.qrToken)}</div>
+              <div class="row" style="margin-top:0.7rem;">
+                <button type="button" class="btn primary sm btn-fullscreen-qr" data-reg-index="${idx}">Present Pass</button>
+                <button type="button" class="btn secondary sm btn-download-qr" data-reg-index="${idx}">Download PNG</button>
+                <button type="button" class="btn secondary sm btn-copy-token" data-token="${escapeHtml(r.qrToken)}">Copy Token</button>
+              </div>
             </div>
           </div>
-        </div>`;
+        </article>`;
       })
       .join("");
+
+    container.querySelectorAll(".btn-fullscreen-qr").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const reg = regs[Number(btn.dataset.regIndex)];
+        if (reg) openPassModal(reg, btn);
+      });
+    });
+
+    container.querySelectorAll(".btn-download-qr").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const reg = regs[Number(btn.dataset.regIndex)];
+        if (!reg || !window.CampusQR || !window.CampusQR.renderQrPngDataUrl) return;
+        try {
+          const dataUrl = window.CampusQR.renderQrPngDataUrl(reg.qrToken, 360);
+          const link = document.createElement("a");
+          link.href = dataUrl;
+          link.download = `PASS-${reg.eventId}-${reg.registrationId}.png`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          showToast(`Downloaded PNG pass for ${reg.eventId}`, "ok");
+        } catch (_err) {
+          showToast("Token exceeds QR PNG export capacity; copy token instead", "err");
+        }
+      });
+    });
 
     container.querySelectorAll(".btn-copy-token").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -379,12 +513,169 @@
     });
   }
 
+  async function decodeCanvasQr(canvas) {
+    if (typeof window.BarcodeDetector === "function") {
+      try {
+        const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+        const found = await detector.detect(canvas);
+        if (found && found.length && found[0].rawValue) {
+          return String(found[0].rawValue).trim();
+        }
+      } catch (_err) {
+        // Fall through to pure-JS decoder
+      }
+    }
+    if (window.CampusQR && typeof window.CampusQR.decodeImageData === "function") {
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const decoded = window.CampusQR.decodeImageData(imgData);
+      if (decoded) return String(decoded).trim();
+    }
+    return null;
+  }
+
+  async function applyDecodedQrToken(decoded, sourceLabel) {
+    el("scanner-qr-token").value = decoded;
+    showToast(`Decoded QR (${sourceLabel}): ${maskToken(decoded)}`, "ok");
+    if (el("scanner-auto-checkin").checked) {
+      await handleScannerCheckIn();
+    }
+  }
+
+  async function startCameraStream() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      el("camera-status").textContent = "Webcam unavailable; use Upload QR Image or Manual input.";
+      showToast("Camera API unavailable in this browser context", "err");
+      return;
+    }
+    stopCameraStream();
+    const epoch = ++state.cameraEpoch;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: { ideal: 960 }, height: { ideal: 600 } },
+        audio: false,
+      });
+      if (epoch !== state.cameraEpoch) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      state.cameraStream = stream;
+      const video = el("scanner-video");
+      video.srcObject = stream;
+      await video.play();
+      if (epoch !== state.cameraEpoch || state.cameraStream !== stream) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      video.closest(".camera-stage").classList.add("is-streaming");
+      el("btn-camera-start").disabled = true;
+      el("btn-camera-stop").disabled = false;
+      el("camera-status").textContent = "Live camera active — hold QR pass inside frame...";
+
+      const canvas = el("scanner-canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      let decoding = false;
+
+      const scanFrame = async () => {
+        if (epoch !== state.cameraEpoch || state.cameraStream !== stream) return;
+        if (!decoding && !state.lastUnverified && video.readyState >= 2 && video.videoWidth > 0) {
+          decoding = true;
+          try {
+            const scale = Math.min(1, 560 / video.videoWidth);
+            canvas.width = Math.max(120, Math.round(video.videoWidth * scale));
+            canvas.height = Math.max(120, Math.round(video.videoHeight * scale));
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const tok = await decodeCanvasQr(canvas);
+            if (epoch !== state.cameraEpoch || state.cameraStream !== stream) return;
+            const nowMs = Date.now();
+            if (tok && (tok !== state.lastScannedToken || nowMs > state.cameraCooldownUntil)) {
+              state.lastScannedToken = tok;
+              el("camera-status").textContent = `Scanned token ${maskToken(tok)}`;
+              await applyDecodedQrToken(tok, "camera");
+              state.cameraCooldownUntil = Date.now() + 3000;
+            }
+          } finally {
+            decoding = false;
+          }
+        }
+        if (epoch === state.cameraEpoch && state.cameraStream === stream) {
+          state.cameraRafId = requestAnimationFrame(scanFrame);
+        }
+      };
+      state.cameraRafId = requestAnimationFrame(scanFrame);
+    } catch (err) {
+      if (epoch === state.cameraEpoch) {
+        el("camera-status").textContent = `Camera permission/hardware error: ${err && err.message ? err.message : "denied"}`;
+        showToast("Could not start camera; use Upload QR Image instead", "err");
+      }
+    }
+  }
+
+  function stopCameraStream() {
+    state.cameraEpoch++;
+    if (state.cameraRafId !== null) {
+      cancelAnimationFrame(state.cameraRafId);
+      state.cameraRafId = null;
+    }
+    if (state.cameraStream) {
+      state.cameraStream.getTracks().forEach((track) => track.stop());
+      state.cameraStream = null;
+    }
+    const video = el("scanner-video");
+    if (video) {
+      video.srcObject = null;
+      const stage = video.closest(".camera-stage");
+      if (stage) stage.classList.remove("is-streaming");
+    }
+    const startBtn = el("btn-camera-start");
+    const stopBtn = el("btn-camera-stop");
+    if (startBtn) startBtn.disabled = false;
+    if (stopBtn) stopBtn.disabled = true;
+    const camStatus = el("camera-status");
+    if (camStatus) camStatus.textContent = "Camera idle";
+  }
+
+  async function handleQrImageFile(file) {
+    if (!file) return;
+    const preview = el("qr-upload-preview");
+    preview.innerHTML = `<div class="alert info">${iconSvg("info")}<div>Decoding <strong>${escapeHtml(file.name)}</strong> locally...</div></div>`;
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error("Could not read uploaded image."));
+        image.src = url;
+      });
+      const maxDim = 640;
+      const ratio = Math.min(1, maxDim / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(64, Math.round((img.naturalWidth || 320) * ratio));
+      canvas.height = Math.max(64, Math.round((img.naturalHeight || 320) * ratio));
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const decoded = await decodeCanvasQr(canvas);
+      if (!decoded) {
+        preview.innerHTML = `<div class="alert err">${iconSvg("err")}<div><strong>QR_NOT_FOUND</strong>: No readable QR pass detected in <em>${escapeHtml(file.name)}</em>. Ensure the whole QR code &amp; white margin are visible.</div></div>`;
+        return;
+      }
+      preview.innerHTML = `<div class="alert ok">${iconSvg("ok")}<div>Decoded QR token <code class="mono-id">${escapeHtml(maskToken(decoded))}</code> from <em>${escapeHtml(file.name)}</em>.</div></div>`;
+      await applyDecodedQrToken(decoded, "image");
+    } catch (err) {
+      preview.innerHTML = `<div class="alert err">${iconSvg("err")}<div>${escapeHtml(err && err.message ? err.message : "Failed to decode image.")}</div></div>`;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   async function handleScannerCheckIn() {
     const eventId = el("scanner-event-id").value;
     const qrToken = el("scanner-qr-token").value.trim();
     if (!eventId || !qrToken) {
       setScannerStepState({ validate: "is-error" });
-      showBanner("scanner-result", "err", "<strong>INVALID_PAYLOAD</strong>: Select an event and enter a QR token.");
+      showBanner("scanner-result", "err", "<strong>INVALID_PAYLOAD</strong>: Select an event and enter or scan a QR token.");
       return;
     }
     const btn = el("btn-scanner-checkin");
@@ -400,9 +691,11 @@
       if (valRes.status === 503) {
         setScannerStepState({ validate: "is-warn" });
         showBanner("scanner-result", "warn", `<strong>UNVERIFIED</strong>: Validation service unavailable (${errCode(valRes)}). No check-in was assumed.`);
+        recordScanHistory(eventId, qrToken, "UNVERIFIED", "warn");
       } else {
         setScannerStepState({ validate: "is-error" });
         showBanner("scanner-result", "err", `<strong>${errCode(valRes)}</strong>: ${errMsg(valRes, "Token validation failed.")}`);
+        recordScanHistory(eventId, qrToken, errCode(valRes), "err");
       }
       return;
     }
@@ -410,6 +703,7 @@
       setLoading(btn, false);
       setScannerStepState({ validate: "is-error" });
       showBanner("scanner-result", "err", `<strong>INVALID_TOKEN</strong>: QR token is invalid, unconfirmed, or belongs to a different event.`);
+      recordScanHistory(eventId, qrToken, "INVALID_TOKEN", "err");
       return;
     }
 
@@ -431,6 +725,7 @@
         "ok",
         `<strong>CHECKED_IN</strong> &middot; Registration <code class="mono-id">${escapeHtml(chkRes.data.registrationId)}</code> at <code class="mono-id">${escapeHtml(chkRes.data.checkInTime)}</code>`
       );
+      recordScanHistory(eventId, qrToken, "CHECKED_IN", "ok");
       showToast("Participant checked in", "ok");
       return;
     }
@@ -442,12 +737,14 @@
         "warn",
         `<strong>ALREADY_CHECKED_IN</strong>: ${errMsg(chkRes, "Already checked in.")} (Registration <code class="mono-id">${escapeHtml(regId)}</code> unchanged)`
       );
+      recordScanHistory(eventId, qrToken, "ALREADY_CHECKED_IN", "warn");
       return;
     }
     if (chkRes.status === 404) {
       setScannerReconcileControls(false, false);
       setScannerStepState({ validate: "is-done", checkin: "is-error" });
       showBanner("scanner-result", "err", `<strong>INVALID_TOKEN</strong>: ${errMsg(chkRes, "QR token is invalid.")}`);
+      recordScanHistory(eventId, qrToken, "INVALID_TOKEN", "err");
       return;
     }
     if (chkRes.status === 503) {
@@ -459,12 +756,14 @@
         "warn",
         `<strong>UNVERIFIED (HTTP 503)</strong>: Attendance outcome unknown for <code class="mono-id">${escapeHtml(regId)}</code>. Reconcile status before retrying.`
       );
+      recordScanHistory(eventId, qrToken, "UNVERIFIED (503)", "warn");
       return;
     }
     state.lastUnverified = null;
     setScannerReconcileControls(false, false);
     setScannerStepState({ validate: "is-done", checkin: "is-error" });
     showBanner("scanner-result", "err", `<strong>${errCode(chkRes)}</strong>: ${errMsg(chkRes, "Check-in failed.")}`);
+    recordScanHistory(eventId, qrToken, errCode(chkRes), "err");
   }
 
   async function handleScannerReconcile() {
@@ -483,7 +782,7 @@
       showBanner(
         "scanner-result",
         "warn",
-        `<strong>STILL UNVERIFIED</strong>: Unable to retrieve authoritative attendance status (${escapeHtml(res.data.code || res.status)}).`
+        `<strong>STILL UNVERIFIED</strong>: Unable to retrieve authoritative attendance status (${errCode(res)}).`
       );
       return;
     }
@@ -531,6 +830,7 @@
     const regCount = Number(r.registeredCount) || 0;
     const chkCount = Number(r.checkedInCount) || 0;
     const notChkCount = Number(r.notCheckedInCount) || 0;
+    const pct = regCount > 0 ? Math.min(100, Math.round((chkCount / regCount) * 100)) : 0;
     const rows = (r.participants || [])
       .map(
         (p) => `
@@ -548,6 +848,10 @@
         <div class="stat-box"><div class="num">${escapeHtml(regCount)}</div><div class="muted">Registered</div></div>
         <div class="stat-box"><div class="num">${escapeHtml(chkCount)}</div><div class="muted">Checked In</div></div>
         <div class="stat-box"><div class="num">${escapeHtml(notChkCount)}</div><div class="muted">Not Checked In</div></div>
+      </div>
+      <div class="rate-card">
+        <div class="rate-top"><span>Attendance Turnout Rate</span><span>${escapeHtml(pct)}%</span></div>
+        <div class="cap-bar"><div class="cap-fill" style="width:${pct}%"></div></div>
       </div>
       <div class="table-wrap">
         <table>
@@ -579,7 +883,15 @@
   function renderAuditTable() {
     const container = el("admin-audit-output");
     const logs = state.auditLogs || [];
-    const filtered = state.auditFilter === "ALL" ? logs : logs.filter((l) => l.category === state.auditFilter);
+    const term = state.auditSearch.trim().toLowerCase();
+    const byCat = state.auditFilter === "ALL" ? logs : logs.filter((l) => l.category === state.auditFilter);
+    const filtered = !term
+      ? byCat
+      : byCat.filter((l) =>
+          `${l.service || ""} ${l.category || ""} ${l.action || ""} ${l.outcome || ""} ${l.errorCode || ""} ${l.correlationId || ""}`
+            .toLowerCase()
+            .includes(term)
+        );
     const unavailableBanner = container.dataset.unavailable
       ? `<div class="alert warn">${iconSvg("warn")}<div>Audit logs unavailable from: ${escapeHtml(container.dataset.unavailable)}</div></div>`
       : "";
@@ -711,9 +1023,20 @@
     if (!isStudent) input.value = "";
   }
 
-  // Event wiring
+  // Navigation & Mode Wiring
   document.querySelectorAll(".tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  });
+
+  document.querySelectorAll(".seg-btn[data-scan-mode]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = btn.dataset.scanMode;
+      if (mode !== "camera") stopCameraStream();
+      switchSegmented("data-scan-mode", mode, {
+        camera: "scanner-pane-camera",
+        upload: "scanner-pane-upload",
+      });
+    });
   });
 
   document.querySelectorAll(".seg-btn[data-org-mode]").forEach((btn) => {
@@ -746,12 +1069,76 @@
     });
   });
 
+  el("admin-audit-search").addEventListener("input", (e) => {
+    state.auditSearch = e.target.value || "";
+    renderAuditTable();
+  });
+
+  el("btn-toggle-password").addEventListener("click", () => {
+    const pw = el("login-password");
+    const btn = el("btn-toggle-password");
+    const reveal = pw.type === "password";
+    pw.type = reveal ? "text" : "password";
+    btn.textContent = reveal ? "Hide" : "Show";
+    btn.setAttribute("aria-pressed", reveal ? "true" : "false");
+  });
+
   document.querySelectorAll(".quick-login").forEach((btn) => {
     btn.addEventListener("click", () => {
+      document.querySelectorAll(".quick-login").forEach((b) => b.classList.remove("is-selected"));
+      btn.classList.add("is-selected");
       el("login-username").value = btn.dataset.user;
       el("login-password").value = btn.dataset.pass;
     });
   });
+
+  function resetWorkspaceUi() {
+    stopCameraStream();
+    closePassModal();
+    state.events = [];
+    state.lastUnverified = null;
+    state.auditLogs = [];
+    state.auditFilter = "ALL";
+    state.auditSearch = "";
+    state.scanHistory = [];
+    state.lastScannedToken = null;
+    renderScanHistory();
+    document.querySelectorAll(".quick-login").forEach((b) => b.classList.remove("is-selected"));
+    document.querySelectorAll("#admin-audit-filters .filter-pill").forEach((p) => {
+      const isAll = p.dataset.category === "ALL";
+      p.classList.toggle("active", isAll);
+      p.setAttribute("aria-pressed", isAll ? "true" : "false");
+    });
+    el("admin-audit-search").value = "";
+    el("create-event-form").reset();
+    el("ev-capacity").value = "25";
+    el("ev-eligible-statuses").value = "ENROLLED";
+    el("edit-event-form").reset();
+    el("create-account-form").reset();
+    el("update-assignments-form").reset();
+    syncStudentIdVisibility();
+    setScannerReconcileControls(false, false);
+    setScannerStepState({});
+    el("student-events-list").innerHTML = `<div class="empty-state">Sign in to inspect campus events and register for an open slot.</div>`;
+    el("student-register-status").innerHTML = "";
+    el("my-registrations-list").innerHTML = `<div class="empty-state">Confirmed event passes will appear here with a scannable QR code.</div>`;
+    el("scanner-event-id").innerHTML = "";
+    el("scanner-qr-token").value = "";
+    el("scanner-qr-file").value = "";
+    el("qr-upload-preview").innerHTML = "";
+    el("org-event-id").innerHTML = "";
+    el("edit-ev-select").innerHTML = "";
+    el("org-event-status").innerHTML = "";
+    el("org-report-output").innerHTML = `<div class="empty-state">Select an event and load the combined report.</div>`;
+    el("admin-health-output").innerHTML = "";
+    el("admin-accounts-output").innerHTML = "";
+    el("admin-account-status").innerHTML = "";
+    el("admin-notifications-output").innerHTML = "";
+    el("admin-audit-output").innerHTML = "";
+    el("admin-audit-output").dataset.unavailable = "";
+    el("toast-stack").innerHTML = "";
+    showBanner("scanner-result", "info", "<strong>Awaiting QR Scan</strong><div>Select an assigned event and scan via camera, QR PNG upload, or manual token input.</div>");
+  }
 
   el("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -765,20 +1152,22 @@
       showBanner("global-status", "err", `<strong>${errCode(res)}</strong>: ${errMsg(res, "Authentication failed.")}`);
       return;
     }
+    resetWorkspaceUi();
     state.sessionToken = res.data.sessionToken;
     state.user = res.data.user;
     updateSessionUi();
     showBanner("global-status", "ok", `Signed in as <strong>${escapeHtml(state.user.username)}</strong> (<span class="mono-id">${escapeHtml(state.user.role)}</span>).`);
-    await refreshEvents();
     if (state.user.role === "STUDENT") {
-      await refreshMyRegistrations();
+      await Promise.all([refreshEvents(), refreshMyRegistrations()]);
       switchTab("tab-student");
     } else if (state.user.role === "CHECK_IN_STAFF") {
+      await refreshEvents();
       switchTab("tab-scanner");
     } else if (state.user.role === "EVENT_ORGANIZER") {
+      await refreshEvents();
       switchTab("tab-organizer");
     } else {
-      await refreshAdminConsole();
+      await Promise.all([refreshEvents(), refreshAdminConsole()]);
       switchTab("tab-admin");
     }
   });
@@ -787,42 +1176,8 @@
     await api("POST", "/api/v1/auth/logout");
     state.sessionToken = null;
     state.user = null;
-    state.events = [];
-    state.lastUnverified = null;
-    state.auditLogs = [];
-    state.auditFilter = "ALL";
-    document.querySelectorAll("#admin-audit-filters .filter-pill").forEach((p) => {
-      const isAll = p.dataset.category === "ALL";
-      p.classList.toggle("active", isAll);
-      p.setAttribute("aria-pressed", isAll ? "true" : "false");
-    });
+    resetWorkspaceUi();
     el("login-password").value = "";
-    el("create-event-form").reset();
-    el("ev-capacity").value = "25";
-    el("ev-eligible-statuses").value = "ENROLLED";
-    el("edit-event-form").reset();
-    el("create-account-form").reset();
-    el("update-assignments-form").reset();
-    syncStudentIdVisibility();
-    setScannerReconcileControls(false, false);
-    setScannerStepState({});
-    el("student-events-list").innerHTML = `<div class="empty-state">Sign in to inspect campus events and remaining slots.</div>`;
-    el("student-register-status").innerHTML = "";
-    el("my-registrations-list").innerHTML = `<div class="empty-state">Confirmed event passes will render here with a scannable QR code.</div>`;
-    el("scanner-event-id").innerHTML = "";
-    el("scanner-qr-token").value = "";
-    el("org-event-id").innerHTML = "";
-    el("edit-ev-select").innerHTML = "";
-    el("org-event-status").innerHTML = "";
-    el("org-report-output").innerHTML = `<div class="empty-state">Select an event and load the combined report.</div>`;
-    el("admin-health-output").innerHTML = "";
-    el("admin-accounts-output").innerHTML = "";
-    el("admin-account-status").innerHTML = "";
-    el("admin-notifications-output").innerHTML = "";
-    el("admin-audit-output").innerHTML = "";
-    el("admin-audit-output").dataset.unavailable = "";
-    el("toast-stack").innerHTML = "";
-    showBanner("scanner-result", "info", "<strong>Awaiting QR Scan</strong><div>Select an assigned event and scan or paste a confirmed participant QR token.</div>");
     updateSessionUi();
     showBanner("global-status", "info", "Signed out cleanly.");
     switchTab("tab-auth");
@@ -839,6 +1194,53 @@
     const { eventId, qrToken, registrationId } = state.lastUnverified;
     await submitCheckInOnce(eventId, qrToken, registrationId);
     setLoading(btn, false);
+  });
+
+  el("scanner-qr-token").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleScannerCheckIn();
+    }
+  });
+
+  el("btn-camera-start").addEventListener("click", startCameraStream);
+  el("btn-camera-stop").addEventListener("click", stopCameraStream);
+
+  el("scanner-qr-file").addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) handleQrImageFile(file);
+    e.target.value = "";
+  });
+
+  const dropzone = el("qr-upload-dropzone");
+  dropzone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropzone.classList.add("is-dragover");
+  });
+  dropzone.addEventListener("dragleave", () => dropzone.classList.remove("is-dragover"));
+  dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("is-dragover");
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) handleQrImageFile(file);
+  });
+
+  el("btn-close-qr-modal").addEventListener("click", closePassModal);
+  el("qr-pass-modal").addEventListener("click", (e) => {
+    if (e.target === el("qr-pass-modal")) closePassModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    const modal = el("qr-pass-modal");
+    if (modal.hidden) return;
+    if (e.key === "Escape") {
+      closePassModal();
+      return;
+    }
+    if (e.key === "Tab") {
+      const closeBtn = el("btn-close-qr-modal");
+      e.preventDefault();
+      closeBtn.focus();
+    }
   });
 
   el("edit-ev-select").addEventListener("change", syncEditEventFields);

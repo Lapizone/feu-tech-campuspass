@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 import pytest
 from playwright.sync_api import expect, sync_playwright
 
@@ -49,7 +51,7 @@ def _logout_ui(page) -> None:
 
 
 @pytest.mark.e2e
-@pytest.mark.timeout(180)
+@pytest.mark.timeout(240)
 def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
     cluster = ServiceCluster.build(
         work_dir=tmp_path,
@@ -67,6 +69,7 @@ def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
                 context = browser.new_context(
                     viewport={"width": 1280, "height": 900},
                     ignore_https_errors=True,
+                    accept_downloads=True,
                 )
                 page = context.new_page()
                 page.on(
@@ -98,9 +101,12 @@ def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
                 _logout_ui(page)
                 assert page.locator("#my-registrations-list .qr-card").count() == 0
 
-                # 3. Student S-001 registers -> CONFIRMED + SVG QR Pass + duplicate check -> 409 ALREADY_REGISTERED
+                # 3. Student S-001 registers -> CONFIRMED + SVG QR Pass + Present modal + PNG download + duplicate check
+                t_login0 = time.monotonic()
                 _login_ui(page, "student_s001")
                 page.locator("#tab-student.active").wait_for(state="visible", timeout=8000)
+                login_elapsed_ms = (time.monotonic() - t_login0) * 1000.0
+                assert login_elapsed_ms < 4000.0, f"Student login too slow: {login_elapsed_ms:.1f}ms"
                 page.locator('.btn-register-ev[data-event-id="EVT-001"]').click()
                 page.locator("#student-register-status .alert.ok").wait_for(
                     state="visible", timeout=8000
@@ -113,6 +119,20 @@ def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
                 ).first.get_attribute("data-token")
                 assert qr_s001 and len(qr_s001) >= 32
                 page.locator("#my-registrations-list .btn-copy-token").first.click()
+
+                # Verify Present Pass modal opens with SVG and closes cleanly
+                page.locator("#my-registrations-list .btn-fullscreen-qr").first.click()
+                page.locator("#qr-pass-modal.active").wait_for(state="visible", timeout=5000)
+                page.locator("#qr-modal-svg svg").wait_for(state="visible", timeout=5000)
+                page.locator("#btn-close-qr-modal").click()
+                page.locator("#qr-pass-modal").wait_for(state="hidden", timeout=5000)
+
+                # Download crisp QR PNG to upload into Scanner kiosk later
+                pass_png_path = tmp_path / "pass_s001.png"
+                with page.expect_download() as dl_info:
+                    page.locator("#my-registrations-list .btn-download-qr").first.click()
+                dl_info.value.save_as(str(pass_png_path))
+                assert pass_png_path.stat().st_size > 200
 
                 # Duplicate attempt via UI Register button
                 page.locator('.btn-register-ev[data-event-id="EVT-001"]').click()
@@ -149,14 +169,17 @@ def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
                 assert "EVENT_FULL" in page.locator("#student-register-status").inner_text()
                 _logout_ui(page)
 
-                # 5. Scanner1: valid check-in, repeat scan 409, wrong-event 404, and live FP 2 outage recovery
+                # 5. Scanner1: Upload downloaded QR PNG -> auto-decode + check-in, repeat scan 409, wrong-event 404, and live FP 2 outage recovery
                 _login_ui(page, "scanner1")
                 page.locator("#tab-scanner.active").wait_for(state="visible", timeout=8000)
                 page.locator("#scanner-event-id").select_option("EVT-001")
-                page.locator("#scanner-qr-token").fill(qr_s001)
-                page.locator("#btn-scanner-checkin").click()
+                page.locator('.scanner-mode-btn[data-scan-mode="upload"]').click()
+                page.locator("#scanner-pane-upload.active").wait_for(state="visible", timeout=5000)
+                page.locator("#scanner-qr-file").set_input_files(str(pass_png_path))
                 page.locator("#scanner-result .alert.ok").wait_for(state="visible", timeout=8000)
+                assert page.locator("#scanner-qr-token").input_value() == qr_s001
                 assert "CHECKED_IN" in page.locator("#scanner-result").inner_text()
+                assert page.locator("#scanner-history tbody tr").count() >= 1
 
                 # Repeat scan
                 page.locator("#btn-scanner-checkin").click()

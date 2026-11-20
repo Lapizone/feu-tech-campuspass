@@ -65,6 +65,7 @@ def create_app(
     reg_http = registration_http_client or httpx.AsyncClient(
         base_url=cfg.event_registration_url,
         verify=ssl_verify,
+        trust_env=False,
     )
     reg_client = RegistrationIntegrationClient(reg_http, cfg)
 
@@ -84,6 +85,7 @@ def create_app(
         notif_http = httpx.AsyncClient(
             base_url=cfg.notification_service_url,
             verify=ssl_verify,
+            trust_env=False,
         )
         notif_client = NotificationDispatchClient(
             notif_http,
