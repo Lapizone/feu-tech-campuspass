@@ -32,8 +32,17 @@ def main() -> None:
     signal.signal(signal.SIGINT, _handle_sig)
     signal.signal(signal.SIGTERM, _handle_sig)
 
+    restore_flag = ROOT_DIR / "runtime" / "restore_attendance.flag"
+    restore_flag.unlink(missing_ok=True)
+
     try:
         while running:
+            if restore_flag.exists():
+                restore_flag.unlink(missing_ok=True)
+                att = cluster.processes.get("attendance-service")
+                if att is None or att.process.poll() is not None:
+                    cluster.start_service("attendance-service", wait_ready=True)
+                    print("Restored attendance-service on https://127.0.0.1:8443")
             time.sleep(0.5)
     finally:
         print("\nShutting down services...")
