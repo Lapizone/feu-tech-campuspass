@@ -577,7 +577,10 @@
         return `
         <article class="qr-card" data-reg-index="${idx}">
           <div class="qr-ticket-banner">
-            <span class="mono-id">FEU TECH PASS &middot; ${escapeHtml(r.eventId)}</span>
+            <span class="ticket-brand">
+              <img src="/static/feu-tech-seal.png" alt="" aria-hidden="true" class="ticket-seal-img" width="22" height="22">
+              <span class="mono-id">FEU TECH PASS &middot; ${escapeHtml(r.eventId)}</span>
+            </span>
             <span class="badge ok">${escapeHtml(r.status)}</span>
           </div>
           <div class="qr-card-body">

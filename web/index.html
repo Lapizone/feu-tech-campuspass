@@ -4,19 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FEU Tech CampusPass · Event Registration &amp; Attendance</title>
+  <link rel="icon" type="image/png" href="/static/feu-tech-seal.png">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body class="is-auth-screen">
   <header class="topbar">
     <div class="topbar-inner">
       <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
-          <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M16 2.5L27 6.8V15.4C27 22.3 22.3 27.6 16 29.8C9.7 27.6 5 22.3 5 15.4V6.8L16 2.5Z" fill="#062B18" stroke="#F0B90B" stroke-width="1.8" stroke-linejoin="round"/>
-            <path d="M8.5 11.2C10.1 8.5 12.6 8 14.5 9.8M23.5 11.2C21.9 8.5 19.4 8 17.5 9.8" stroke="#FEF08A" stroke-width="1.9" stroke-linecap="round"/>
-            <path d="M11 14.5L16 18.2L21 14.5M12.8 20.6L16 23L19.2 20.6" stroke="#F0B90B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="16" cy="12" r="1.7" fill="#FEF08A"/>
-          </svg>
+        <div class="brand-mark">
+          <img src="/static/feu-tech-seal.png" alt="FEU Institute of Technology Seal" class="brand-seal-img" width="44" height="44">
         </div>
         <div class="brand-copy">
           <div class="brand-title-row">
@@ -73,13 +69,8 @@
       <div class="auth-stage">
         <div class="card auth-gate-card">
           <div class="auth-masthead">
-            <div class="masthead-crest" aria-hidden="true">
-              <svg width="38" height="38" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M16 2.5L27 6.8V15.4C27 22.3 22.3 27.6 16 29.8C9.7 27.6 5 22.3 5 15.4V6.8L16 2.5Z" fill="#041F11" stroke="#F0B90B" stroke-width="1.8" stroke-linejoin="round"/>
-                <path d="M8.5 11.2C10.1 8.5 12.6 8 14.5 9.8M23.5 11.2C21.9 8.5 19.4 8 17.5 9.8" stroke="#FEF08A" stroke-width="1.9" stroke-linecap="round"/>
-                <path d="M11 14.5L16 18.2L21 14.5M12.8 20.6L16 23L19.2 20.6" stroke="#F0B90B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-                <circle cx="16" cy="12" r="1.7" fill="#FEF08A"/>
-              </svg>
+            <div class="masthead-crest">
+              <img src="/static/feu-tech-logo.png" alt="FEU Tech — Student Online Access and Records" class="auth-logo-img" width="112" height="112">
             </div>
             <div class="masthead-copy">
               <span class="masthead-eyebrow">FAR EASTERN UNIVERSITY · INSTITUTE OF TECHNOLOGY</span>
@@ -558,9 +549,12 @@
   <div id="qr-pass-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="qr-modal-title" hidden>
     <div class="modal-card">
       <div class="modal-head">
-        <div>
-          <span class="modal-eyebrow">FEU Tech · iTamaraw Entry Pass</span>
-          <h3 id="qr-modal-title">Event Pass</h3>
+        <div class="modal-title-group">
+          <img src="/static/feu-tech-seal.png" alt="" aria-hidden="true" class="modal-seal-img" width="34" height="34">
+          <div>
+            <span class="modal-eyebrow">FEU Tech · iTamaraw Entry Pass</span>
+            <h3 id="qr-modal-title">Event Pass</h3>
+          </div>
         </div>
         <button id="btn-close-qr-modal" type="button" class="btn secondary sm" aria-label="Close pass modal">Close</button>
       </div>

@@ -38,6 +38,8 @@ def test_live_https_cluster_full_lifecycle_ui_and_process_kill_fp2(tmp_path):
                 assert (await gw.get("/static/styles.css")).status_code == 200
                 assert (await gw.get("/static/qr.js")).status_code == 200
                 assert (await gw.get("/static/app.js")).status_code == 200
+                assert (await gw.get("/static/feu-tech-logo.png")).status_code == 200
+                assert (await gw.get("/static/feu-tech-seal.png")).status_code == 200
 
                 async def login(username: str, password: str = "Password123!") -> str:
                     resp = await gw.post(
