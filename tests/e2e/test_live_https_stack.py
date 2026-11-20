@@ -33,7 +33,8 @@ def test_live_https_cluster_full_lifecycle_ui_and_process_kill_fp2(tmp_path):
                 # 1. Verify Gateway serves static Web UI assets cleanly over HTTPS
                 r_html = await gw.get("/")
                 assert r_html.status_code == 200
-                assert "Integrated Campus Event Registration" in r_html.text
+                assert "FEU Tech CampusPass" in r_html.text
+                assert "FEU Institute of Technology" in r_html.text
                 assert (await gw.get("/static/styles.css")).status_code == 200
                 assert (await gw.get("/static/qr.js")).status_code == 200
                 assert (await gw.get("/static/app.js")).status_code == 200

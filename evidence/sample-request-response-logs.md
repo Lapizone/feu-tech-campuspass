@@ -1,6 +1,6 @@
 # Section 10 Evidence: Sample Request/Response & Redacted Audit Logs
 
-Generated: `2026-11-20T16:30:17+08:00`
+Generated: `2026-11-20T17:36:17+08:00`
 
 All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) against the running five-service cluster with TLS verification enabled. Raw `qrToken` values, passwords, session credentials, and sensitive PII fields are redacted (`[REDACTED]` / `[REDACTED_QR_TOKEN]`).
 
@@ -19,7 +19,7 @@ All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) aga
 // Response Body
 {
   "sessionToken": "[REDACTED]",
-  "expiresAt": "2026-11-21T00:33:15+08:00",
+  "expiresAt": "2026-11-21T01:38:21+08:00",
   "user": {
     "accountId": "ACC-S001",
     "username": "student_s001",
@@ -44,7 +44,7 @@ All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) aga
 // Response Body
 {
   "sessionToken": "[REDACTED]",
-  "expiresAt": "2026-11-21T00:33:16+08:00",
+  "expiresAt": "2026-11-21T01:38:21+08:00",
   "user": {
     "accountId": "ACC-S002",
     "username": "student_s002",
@@ -69,7 +69,7 @@ All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) aga
 // Response Body
 {
   "sessionToken": "[REDACTED]",
-  "expiresAt": "2026-11-21T00:33:16+08:00",
+  "expiresAt": "2026-11-21T01:38:22+08:00",
   "user": {
     "accountId": "ACC-S003",
     "username": "student_s003",
@@ -94,7 +94,7 @@ All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) aga
 // Response Body
 {
   "sessionToken": "[REDACTED]",
-  "expiresAt": "2026-11-21T00:33:17+08:00",
+  "expiresAt": "2026-11-21T01:38:22+08:00",
   "user": {
     "accountId": "ACC-S004",
     "username": "student_s004",
@@ -119,7 +119,7 @@ All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) aga
 // Response Body
 {
   "sessionToken": "[REDACTED]",
-  "expiresAt": "2026-11-21T00:33:17+08:00",
+  "expiresAt": "2026-11-21T01:38:22+08:00",
   "user": {
     "accountId": "ACC-SCN1",
     "username": "scanner1",
@@ -147,7 +147,7 @@ All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) aga
 // Response Body
 {
   "sessionToken": "[REDACTED]",
-  "expiresAt": "2026-11-21T00:33:18+08:00",
+  "expiresAt": "2026-11-21T01:38:23+08:00",
   "user": {
     "accountId": "ACC-ORG1",
     "username": "organizer1",
@@ -175,7 +175,7 @@ All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) aga
 // Response Body
 {
   "sessionToken": "[REDACTED]",
-  "expiresAt": "2026-11-21T00:33:18+08:00",
+  "expiresAt": "2026-11-21T01:38:23+08:00",
   "user": {
     "accountId": "ACC-ADM1",
     "username": "admin1",
@@ -219,7 +219,7 @@ All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) aga
 
 // Response Body
 {
-  "registrationId": "REG-299A6BAE",
+  "registrationId": "REG-CB1F9A46",
   "eventId": "EVT-001",
   "status": "CONFIRMED",
   "qrToken": "[REDACTED]"
@@ -256,7 +256,7 @@ All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) aga
 
 // Response Body
 {
-  "registrationId": "REG-5C532D04",
+  "registrationId": "REG-4FE97E9C",
   "eventId": "EVT-001",
   "status": "CONFIRMED",
   "qrToken": "[REDACTED]"
@@ -294,7 +294,7 @@ All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) aga
 
 // Response Body
 {
-  "registrationId": "REG-299A6BAE",
+  "registrationId": "REG-CB1F9A46",
   "eventId": "EVT-001",
   "status": "CONFIRMED",
   "valid": true
@@ -313,9 +313,9 @@ All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) aga
 
 // Response Body
 {
-  "registrationId": "REG-299A6BAE",
+  "registrationId": "REG-CB1F9A46",
   "attendanceStatus": "CHECKED_IN",
-  "checkInTime": "2026-11-20T16:33:19+08:00"
+  "checkInTime": "2026-11-20T17:38:24+08:00"
 }
 ```
 ### 15. Repeat scan S-001 (409 ALREADY_CHECKED_IN)
@@ -332,7 +332,7 @@ All HTTP requests and responses below were captured over HTTPS (`127.0.0.1`) aga
 // Response Body
 {
   "code": "ALREADY_CHECKED_IN",
-  "message": "Registration 'REG-299A6BAE' is already checked in for event 'EVT-001'.",
+  "message": "Registration 'REG-CB1F9A46' is already checked in for event 'EVT-001'.",
   "correlationId": "corr-ev-chk-dup"
 }
 ```
@@ -386,12 +386,12 @@ null
   "eventId": "EVT-001",
   "registrations": [
     {
-      "registrationId": "REG-299A6BAE",
+      "registrationId": "REG-CB1F9A46",
       "studentId": "S-001",
       "status": "CONFIRMED"
     },
     {
-      "registrationId": "REG-5C532D04",
+      "registrationId": "REG-4FE97E9C",
       "studentId": "S-002",
       "status": "CONFIRMED"
     }
@@ -400,7 +400,7 @@ null
 ```
 ### 19. Authoritative attendance status for REG-S1
 
-- **Request**: `GET /api/v1/events/EVT-001/registrations/REG-299A6BAE/attendance` (Correlation ID: `corr-ev-att-s1`)
+- **Request**: `GET /api/v1/events/EVT-001/registrations/REG-CB1F9A46/attendance` (Correlation ID: `corr-ev-att-s1`)
 - **HTTP Status**: `200`
 
 ```json
@@ -410,9 +410,9 @@ null
 // Response Body
 {
   "eventId": "EVT-001",
-  "registrationId": "REG-299A6BAE",
+  "registrationId": "REG-CB1F9A46",
   "checkedIn": true,
-  "checkInTime": "2026-11-20T16:33:19+08:00"
+  "checkInTime": "2026-11-20T17:38:24+08:00"
 }
 ```
 ### 20. Combined attendance report for EVT-001
@@ -429,14 +429,14 @@ null
   "eventId": "EVT-001",
   "participants": [
     {
-      "registrationId": "REG-299A6BAE",
+      "registrationId": "REG-CB1F9A46",
       "studentId": "S-001",
       "registrationStatus": "CONFIRMED",
       "checkedIn": true,
-      "checkInTime": "2026-11-20T16:33:19+08:00"
+      "checkInTime": "2026-11-20T17:38:24+08:00"
     },
     {
-      "registrationId": "REG-5C532D04",
+      "registrationId": "REG-4FE97E9C",
       "studentId": "S-002",
       "registrationStatus": "CONFIRMED",
       "checkedIn": false,
@@ -456,8 +456,8 @@ Unavailable services during capture: `[]`
 ```json
 [
   {
-    "logId": "LOG-7851f9e7dc09",
-    "timestamp": "2026-11-20T16:33:27+08:00",
+    "logId": "LOG-b631da62d8df",
+    "timestamp": "2026-11-20T17:38:31+08:00",
     "correlationId": "corr-ev-report",
     "service": "attendance-service",
     "category": "Notifications and reporting",
@@ -474,8 +474,8 @@ Unavailable services during capture: `[]`
     }
   },
   {
-    "logId": "LOG-9649d808d75e",
-    "timestamp": "2026-11-20T16:33:27+08:00",
+    "logId": "LOG-676bbfd3a153",
+    "timestamp": "2026-11-20T17:38:31+08:00",
     "correlationId": "corr-ev-att-s1",
     "service": "attendance-service",
     "category": "Attendance activity",
@@ -484,12 +484,12 @@ Unavailable services during capture: `[]`
     "errorCode": null,
     "actorId": "ACC-SCN1",
     "eventId": "EVT-001",
-    "registrationId": "REG-299A6BAE",
+    "registrationId": "REG-CB1F9A46",
     "details": {}
   },
   {
-    "logId": "LOG-2457d2d55066",
-    "timestamp": "2026-11-20T16:33:21+08:00",
+    "logId": "LOG-7e53f2e768fa",
+    "timestamp": "2026-11-20T17:38:26+08:00",
     "correlationId": "corr-ev-outage",
     "service": "gateway",
     "category": "Integration failures",
@@ -506,8 +506,8 @@ Unavailable services during capture: `[]`
     }
   },
   {
-    "logId": "LOG-f8bb51ac5d43",
-    "timestamp": "2026-11-20T16:33:19+08:00",
+    "logId": "LOG-0df9ae04ec20",
+    "timestamp": "2026-11-20T17:38:24+08:00",
     "correlationId": "corr-ev-reg-full",
     "service": "student-directory",
     "category": "Event and registration activity",
@@ -524,8 +524,8 @@ Unavailable services during capture: `[]`
     }
   },
   {
-    "logId": "LOG-f28cab86f62d",
-    "timestamp": "2026-11-20T16:33:19+08:00",
+    "logId": "LOG-078e7e98bf40",
+    "timestamp": "2026-11-20T17:38:24+08:00",
     "correlationId": "corr-ev-outage",
     "service": "event-registration",
     "category": "Attendance activity",
@@ -534,14 +534,14 @@ Unavailable services during capture: `[]`
     "errorCode": null,
     "actorId": "gateway",
     "eventId": "EVT-001",
-    "registrationId": "REG-5C532D04",
+    "registrationId": "REG-4FE97E9C",
     "details": {
       "valid": true
     }
   },
   {
-    "logId": "LOG-d8b97a907f54",
-    "timestamp": "2026-11-20T16:33:19+08:00",
+    "logId": "LOG-1d923cca5593",
+    "timestamp": "2026-11-20T17:38:24+08:00",
     "correlationId": "corr-ev-chk-wrong",
     "service": "event-registration",
     "category": "Attendance activity",
@@ -556,8 +556,8 @@ Unavailable services during capture: `[]`
     }
   },
   {
-    "logId": "LOG-80e8fbb4107b",
-    "timestamp": "2026-11-20T16:33:19+08:00",
+    "logId": "LOG-25dcdff4cb8b",
+    "timestamp": "2026-11-20T17:38:24+08:00",
     "correlationId": "corr-ev-chk-dup",
     "service": "event-registration",
     "category": "Attendance activity",
@@ -566,14 +566,14 @@ Unavailable services during capture: `[]`
     "errorCode": null,
     "actorId": "attendance-service",
     "eventId": "EVT-001",
-    "registrationId": "REG-299A6BAE",
+    "registrationId": "REG-CB1F9A46",
     "details": {
       "valid": true
     }
   },
   {
-    "logId": "LOG-916c73e73086",
-    "timestamp": "2026-11-20T16:33:19+08:00",
+    "logId": "LOG-e5a077df0aa0",
+    "timestamp": "2026-11-20T17:38:24+08:00",
     "correlationId": "corr-ev-chk-s1",
     "service": "event-registration",
     "category": "Attendance activity",
@@ -582,14 +582,14 @@ Unavailable services during capture: `[]`
     "errorCode": null,
     "actorId": "attendance-service",
     "eventId": "EVT-001",
-    "registrationId": "REG-299A6BAE",
+    "registrationId": "REG-CB1F9A46",
     "details": {
       "valid": true
     }
   },
   {
-    "logId": "LOG-6d85facf53e8",
-    "timestamp": "2026-11-20T16:33:19+08:00",
+    "logId": "LOG-a854e365c032",
+    "timestamp": "2026-11-20T17:38:24+08:00",
     "correlationId": "corr-ev-val-s1",
     "service": "event-registration",
     "category": "Attendance activity",
@@ -598,14 +598,14 @@ Unavailable services during capture: `[]`
     "errorCode": null,
     "actorId": "gateway",
     "eventId": "EVT-001",
-    "registrationId": "REG-299A6BAE",
+    "registrationId": "REG-CB1F9A46",
     "details": {
       "valid": true
     }
   },
   {
-    "logId": "LOG-827ad64975a5",
-    "timestamp": "2026-11-20T16:33:19+08:00",
+    "logId": "LOG-05c3df1c864e",
+    "timestamp": "2026-11-20T17:38:24+08:00",
     "correlationId": "corr-ev-reg-full",
     "service": "event-registration",
     "category": "Event and registration activity",
@@ -620,8 +620,8 @@ Unavailable services during capture: `[]`
     }
   },
   {
-    "logId": "LOG-a5ed9f08b26f",
-    "timestamp": "2026-11-20T16:33:19+08:00",
+    "logId": "LOG-1b8d0675429e",
+    "timestamp": "2026-11-20T17:38:24+08:00",
     "correlationId": "corr-ev-reg-s2",
     "service": "event-registration",
     "category": "Notifications and reporting",
@@ -630,27 +630,25 @@ Unavailable services during capture: `[]`
     "errorCode": null,
     "actorId": "event-registration",
     "eventId": "EVT-001",
-    "registrationId": "REG-5C532D04",
+    "registrationId": "REG-4FE97E9C",
     "details": {
       "type": "REGISTRATION_CONFIRMED",
-      "notificationId": "NOTIF-68E3EE3F"
+      "notificationId": "NOTIF-BD596A2C"
     }
   },
   {
-    "logId": "LOG-29fdca2e6d0f",
-    "timestamp": "2026-11-20T16:33:19+08:00",
-    "correlationId": "corr-ev-reg-s2",
-    "service": "event-registration",
-    "category": "Event and registration activity",
-    "action": "REGISTER_STUDENT",
-    "outcome": "SUCCESS",
-    "errorCode": null,
-    "actorId": "ACC-S002",
-    "eventId": "EVT-001",
-    "registrationId": "REG-5C532D04",
-    "details": {
-      "studentId": "S-002"
-    }
+    "logId": "LOG-98afe8eb72bf",
+    "timestamp": "2026-11-20T17:38:24+08:00",
+    "correlationId": "corr-ev-chk-wrong",
+    "service": "attendance-service",
+    "category": "Attendance activity",
+    "action": "CHECK_IN",
+    "outcome": "REJECTED",
+    "errorCode": "INVALID_TOKEN",
+    "actorId": "ACC-SCN1",
+    "eventId": "EVT-002",
+    "registrationId": null,
+    "details": {}
   }
 ]
 ```

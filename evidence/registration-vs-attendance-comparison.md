@@ -1,6 +1,6 @@
 # Section 10 Evidence: Registration vs Attendance Record Comparison
 
-Generated: `2026-11-20T16:30:17+08:00`
+Generated: `2026-11-20T17:36:17+08:00`
 
 This comparison demonstrates Proposal Section 4 ("Revised: Traceability of integration objectives to project objectives"): Event Registration and Attendance Service maintain separate SQLite databases and reconcile records through documented `/api/v1/` interfaces matched on `(eventId, registrationId)` without manual spreadsheet matching.
 
@@ -15,8 +15,8 @@ This comparison demonstrates Proposal Section 4 ("Revised: Traceability of integ
 
 | Registration ID | Student ID | Registration Status | Attendance Status | Check-in Time (RFC 3339) |
 | :--- | :--- | :--- | :--- | :--- |
-| `REG-299A6BAE` | `S-001` | `CONFIRMED` | `CHECKED_IN` | `2026-11-20T16:33:19+08:00` |
-| `REG-5C532D04` | `S-002` | `CONFIRMED` | `NOT_CHECKED_IN` | `null` |
+| `REG-CB1F9A46` | `S-001` | `CONFIRMED` | `CHECKED_IN` | `2026-11-20T17:38:24+08:00` |
+| `REG-4FE97E9C` | `S-002` | `CONFIRMED` | `NOT_CHECKED_IN` | `null` |
 
 ## Raw Interface Payloads
 
@@ -27,12 +27,12 @@ This comparison demonstrates Proposal Section 4 ("Revised: Traceability of integ
   "eventId": "EVT-001",
   "registrations": [
     {
-      "registrationId": "REG-299A6BAE",
+      "registrationId": "REG-CB1F9A46",
       "studentId": "S-001",
       "status": "CONFIRMED"
     },
     {
-      "registrationId": "REG-5C532D04",
+      "registrationId": "REG-4FE97E9C",
       "studentId": "S-002",
       "status": "CONFIRMED"
     }
@@ -47,14 +47,14 @@ This comparison demonstrates Proposal Section 4 ("Revised: Traceability of integ
   "eventId": "EVT-001",
   "participants": [
     {
-      "registrationId": "REG-299A6BAE",
+      "registrationId": "REG-CB1F9A46",
       "studentId": "S-001",
       "registrationStatus": "CONFIRMED",
       "checkedIn": true,
-      "checkInTime": "2026-11-20T16:33:19+08:00"
+      "checkInTime": "2026-11-20T17:38:24+08:00"
     },
     {
-      "registrationId": "REG-5C532D04",
+      "registrationId": "REG-4FE97E9C",
       "studentId": "S-002",
       "registrationStatus": "CONFIRMED",
       "checkedIn": false,

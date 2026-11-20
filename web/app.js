@@ -4,9 +4,17 @@
   const CLIENT_TIMEOUT_MS = 8000;
   const REPORT_TIMEOUT_MS = 10000;
 
+  const ROLE_TABS = {
+    STUDENT: ["tab-student"],
+    CHECK_IN_STAFF: ["tab-scanner"],
+    EVENT_ORGANIZER: ["tab-organizer"],
+    ADMINISTRATOR: ["tab-admin", "tab-organizer", "tab-scanner"],
+  };
+
   const state = {
     sessionToken: null,
     user: null,
+    sessionEpoch: 0,
     events: [],
     lastUnverified: null,
     auditLogs: [],
@@ -136,17 +144,109 @@
       .filter(Boolean);
   }
 
+  function getAllowedTabs() {
+    if (!state.user || !state.user.role) return [];
+    return ROLE_TABS[state.user.role] || [];
+  }
+
+  function formatScopeSummary(user) {
+    if (!user) return "";
+    if (user.role === "STUDENT") {
+      return `Student Scope · ID ${user.studentId || "Unbound"}`;
+    }
+    const eventsLabel = (user.assignedEventIds || []).join(", ") || "No assigned events";
+    if (user.role === "CHECK_IN_STAFF") {
+      return `Scanner Scope · ${eventsLabel}`;
+    }
+    if (user.role === "EVENT_ORGANIZER") {
+      return `Organizer Scope · ${eventsLabel}`;
+    }
+    if (user.role === "ADMINISTRATOR") {
+      return "Administrator Scope · 3 Authorized Workspaces";
+    }
+    return user.role;
+  }
+
+  function syncRoleAccessUi() {
+    const navRail = el("nav-rail");
+    const scopePill = el("rbac-scope-pill");
+    const authPanel = el("tab-auth");
+    const allowed = getAllowedTabs();
+
+    if (!state.user) {
+      document.body.classList.add("is-auth-screen");
+      document.body.classList.remove("is-authenticated");
+      if (navRail) navRail.hidden = true;
+      if (scopePill) scopePill.textContent = "";
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.hidden = true;
+        btn.disabled = true;
+        btn.classList.remove("active");
+        btn.setAttribute("aria-selected", "false");
+      });
+      document.querySelectorAll(".panel").forEach((panel) => {
+        const isAuth = panel.id === "tab-auth";
+        panel.hidden = !isAuth;
+        panel.classList.toggle("active", isAuth);
+      });
+      return;
+    }
+
+    document.body.classList.remove("is-auth-screen");
+    document.body.classList.add("is-authenticated");
+    if (navRail) navRail.hidden = false;
+    if (scopePill) scopePill.textContent = formatScopeSummary(state.user);
+
+    if (authPanel) {
+      authPanel.hidden = true;
+      authPanel.classList.remove("active");
+    }
+
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      const isAllowed = allowed.includes(btn.dataset.tab);
+      btn.hidden = !isAllowed;
+      btn.disabled = !isAllowed;
+      if (!isAllowed) {
+        btn.classList.remove("active");
+        btn.setAttribute("aria-selected", "false");
+      }
+    });
+
+    document.querySelectorAll(".panel").forEach((panel) => {
+      if (panel.id === "tab-auth") return;
+      if (!allowed.includes(panel.id)) {
+        panel.hidden = true;
+        panel.classList.remove("active");
+      }
+    });
+  }
+
   function switchTab(tabId) {
+    if (!state.user) {
+      syncRoleAccessUi();
+      return;
+    }
+    if (tabId === "tab-auth") {
+      showToast("Sign out first to return to the login screen.", "err");
+      return;
+    }
+    const allowed = getAllowedTabs();
+    if (!allowed.includes(tabId)) {
+      showToast("Access restricted for your role.", "err");
+      return;
+    }
     if (tabId !== "tab-scanner") {
       stopCameraStream();
     }
     document.querySelectorAll(".tab-btn").forEach((btn) => {
-      const active = btn.dataset.tab === tabId;
+      const active = btn.dataset.tab === tabId && !btn.disabled;
       btn.classList.toggle("active", active);
       btn.setAttribute("aria-selected", active ? "true" : "false");
     });
     document.querySelectorAll(".panel").forEach((panel) => {
-      panel.classList.toggle("active", panel.id === tabId);
+      const active = panel.id === tabId;
+      panel.hidden = !active;
+      panel.classList.toggle("active", active);
     });
   }
 
@@ -244,9 +344,13 @@
 
   async function refreshEvents() {
     if (!state.user) return;
+    const epoch = state.sessionEpoch;
+    const role = state.user.role;
     const res = await api("GET", "/api/v1/events");
+    if (!state.user || epoch !== state.sessionEpoch) return;
     if (!res.ok) {
-      showBanner("student-events-list", "err", `<strong>${errCode(res)}</strong>: ${errMsg(res, "Unable to load events.")}`);
+      const target = role === "STUDENT" ? "student-events-list" : "global-status";
+      showBanner(target, "err", `<strong>${errCode(res)}</strong>: ${errMsg(res, "Unable to load events.")}`);
       return;
     }
     state.events = res.data.events || [];
@@ -306,16 +410,25 @@
   }
 
   function populateEventSelectors() {
-    const validIds = new Set(state.events.map((ev) => ev.eventId));
+    const isScopedStaffOrOrg =
+      state.user &&
+      (state.user.role === "CHECK_IN_STAFF" || state.user.role === "EVENT_ORGANIZER");
+    const assignedSet = new Set((state.user && state.user.assignedEventIds) || []);
+    const visibleEvents = isScopedStaffOrOrg
+      ? state.events.filter((ev) => assignedSet.has(ev.eventId))
+      : state.events;
+    const validIds = new Set(visibleEvents.map((ev) => ev.eventId));
     const selectorIds = ["scanner-event-id", "org-event-id", "edit-ev-select"];
     const prevValues = {};
     selectorIds.forEach((id) => {
       prevValues[id] = el(id).value;
     });
 
-    const options = state.events
-      .map((ev) => `<option value="${escapeHtml(ev.eventId)}">${escapeHtml(ev.eventId)} - ${escapeHtml(ev.title)}</option>`)
-      .join("");
+    const options = visibleEvents.length
+      ? visibleEvents
+          .map((ev) => `<option value="${escapeHtml(ev.eventId)}">${escapeHtml(ev.eventId)} - ${escapeHtml(ev.title)}</option>`)
+          .join("")
+      : `<option value="">No assigned events</option>`;
     selectorIds.forEach((id) => {
       const node = el(id);
       node.innerHTML = options;
@@ -419,14 +532,18 @@
 
   function closePassModal() {
     const modal = el("qr-pass-modal");
+    const wasOpen = Boolean(modal && !modal.hidden);
     if (modal) {
       modal.classList.remove("active");
       modal.hidden = true;
     }
-    if (state.modalTrigger && typeof state.modalTrigger.focus === "function") {
-      state.modalTrigger.focus();
-    }
+    el("qr-modal-svg").innerHTML = "";
+    el("qr-modal-meta").innerHTML = "";
+    const trigger = state.modalTrigger;
     state.modalTrigger = null;
+    if (wasOpen && trigger && typeof trigger.focus === "function" && trigger.offsetParent !== null) {
+      trigger.focus();
+    }
   }
 
   async function refreshMyRegistrations() {
@@ -435,7 +552,9 @@
       container.innerHTML = `<div class="empty-state">Sign in as a student account to view QR passes.</div>`;
       return;
     }
+    const epoch = state.sessionEpoch;
     const res = await api("GET", "/api/v1/my/registrations");
+    if (!state.user || epoch !== state.sessionEpoch || state.user.role !== "STUDENT") return;
     if (!res.ok) {
       showBanner("my-registrations-list", "err", `<strong>${errCode(res)}</strong>: ${errMsg(res, "Unable to load registrations.")}`);
       return;
@@ -458,7 +577,7 @@
         return `
         <article class="qr-card" data-reg-index="${idx}">
           <div class="qr-ticket-banner">
-            <span class="mono-id">CAMPUS PASS &middot; ${escapeHtml(r.eventId)}</span>
+            <span class="mono-id">FEU TECH PASS &middot; ${escapeHtml(r.eventId)}</span>
             <span class="badge ok">${escapeHtml(r.status)}</span>
           </div>
           <div class="qr-card-body">
@@ -908,6 +1027,8 @@
   }
 
   async function refreshAdminConsole() {
+    if (!state.user || state.user.role !== "ADMINISTRATOR") return;
+    const epoch = state.sessionEpoch;
     const refreshBtn = el("btn-admin-refresh");
     setLoading(refreshBtn, true, "Refreshing...");
     const [healthRes, accRes, notifRes, failRes, auditRes] = await Promise.all([
@@ -918,6 +1039,7 @@
       api("GET", "/api/v1/admin/audit-logs"),
     ]);
     setLoading(refreshBtn, false);
+    if (!state.user || epoch !== state.sessionEpoch || state.user.role !== "ADMINISTRATOR") return;
 
     if (!healthRes.ok) {
       showBanner("admin-health-output", "err", `<strong>${errCode(healthRes)}</strong>: ${errMsg(healthRes, "Unable to query service health.")}`);
@@ -1093,6 +1215,7 @@
   });
 
   function resetWorkspaceUi() {
+    state.sessionEpoch++;
     stopCameraStream();
     closePassModal();
     state.events = [];
@@ -1103,6 +1226,25 @@
     state.scanHistory = [];
     state.lastScannedToken = null;
     renderScanHistory();
+    switchSegmented("data-scan-mode", "manual", {
+      camera: "scanner-pane-camera",
+      upload: "scanner-pane-upload",
+    });
+    switchSegmented("data-org-mode", "create", {
+      create: "create-event-form",
+      edit: "edit-event-form",
+    });
+    switchSegmented("data-adm-mode", "create", {
+      create: "create-account-form",
+      assign: "update-assignments-form",
+    });
+    const pw = el("login-password");
+    const pwToggle = el("btn-toggle-password");
+    if (pw) pw.type = "password";
+    if (pwToggle) {
+      pwToggle.textContent = "Show";
+      pwToggle.setAttribute("aria-pressed", "false");
+    }
     document.querySelectorAll(".quick-login").forEach((b) => b.classList.remove("is-selected"));
     document.querySelectorAll("#admin-audit-filters .filter-pill").forEach((p) => {
       const isAll = p.dataset.category === "ALL";
@@ -1156,6 +1298,7 @@
     state.sessionToken = res.data.sessionToken;
     state.user = res.data.user;
     updateSessionUi();
+    syncRoleAccessUi();
     showBanner("global-status", "ok", `Signed in as <strong>${escapeHtml(state.user.username)}</strong> (<span class="mono-id">${escapeHtml(state.user.role)}</span>).`);
     if (state.user.role === "STUDENT") {
       await Promise.all([refreshEvents(), refreshMyRegistrations()]);
@@ -1173,14 +1316,16 @@
   });
 
   el("btn-logout").addEventListener("click", async () => {
+    state.sessionEpoch++;
     await api("POST", "/api/v1/auth/logout");
     state.sessionToken = null;
     state.user = null;
     resetWorkspaceUi();
+    el("login-username").value = "";
     el("login-password").value = "";
     updateSessionUi();
+    syncRoleAccessUi();
     showBanner("global-status", "info", "Signed out cleanly.");
-    switchTab("tab-auth");
   });
 
   el("btn-refresh-events").addEventListener("click", refreshEvents);
@@ -1271,6 +1416,19 @@
     el("create-event-form").reset();
     el("ev-capacity").value = "25";
     el("ev-eligible-statuses").value = "ENROLLED";
+    const meRes = await api("GET", "/api/v1/auth/me");
+    if (meRes.ok && meRes.data && meRes.data.accountId) {
+      state.user = meRes.data;
+    } else if (
+      state.user &&
+      state.user.role === "EVENT_ORGANIZER" &&
+      res.data &&
+      res.data.eventId &&
+      !(state.user.assignedEventIds || []).includes(res.data.eventId)
+    ) {
+      state.user.assignedEventIds = [...(state.user.assignedEventIds || []), res.data.eventId];
+    }
+    syncRoleAccessUi();
     await refreshEvents();
     showBanner("org-event-status", "ok", `Created event <strong class="mono-id">${escapeHtml(res.data.eventId)}</strong> (capacity ${escapeHtml(Number(res.data.capacity))}).`);
     showToast(`Created ${res.data.eventId}`, "ok");
@@ -1348,6 +1506,30 @@
       showBanner("admin-account-status", "err", `<strong>${errCode(res)}</strong>: ${errMsg(res, "Unable to update assignments.")}`);
       return;
     }
+    if (state.user && res.data && res.data.accountId === state.user.accountId) {
+      const meRes = await api("GET", "/api/v1/auth/me");
+      if (meRes.ok && meRes.data && meRes.data.accountId) {
+        state.user = meRes.data;
+      } else {
+        state.user.role = res.data.role;
+        state.user.assignedEventIds = res.data.assignedEventIds || [];
+      }
+      updateSessionUi();
+      syncRoleAccessUi();
+      populateEventSelectors();
+      if (!getAllowedTabs().includes("tab-admin")) {
+        const nextTabs = getAllowedTabs();
+        if (nextTabs.length) {
+          switchTab(nextTabs[0]);
+          if (state.user.role === "STUDENT") {
+            await refreshMyRegistrations();
+          }
+        }
+        showBanner("global-status", "ok", `Updated your active role to <span class="mono-id">${escapeHtml(state.user.role)}</span>.`);
+        showToast(`Role changed to ${state.user.role}`, "ok");
+        return;
+      }
+    }
     await refreshAdminConsole();
     showBanner("admin-account-status", "ok", `Updated assignments for <strong class="mono-id">${escapeHtml(res.data.accountId)}</strong> (${escapeHtml(res.data.role)}).`);
     showToast(`Updated ${res.data.username}`, "ok");
@@ -1369,4 +1551,7 @@
     showBanner("global-status", "ok", `Purged expired audit logs (retention: ${escapeHtml(Number(res.data.retentionDays) || 30)} days).`);
     showToast("Audit retention purge completed", "ok");
   });
+
+  updateSessionUi();
+  syncRoleAccessUi();
 })();

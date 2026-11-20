@@ -48,6 +48,24 @@ def _login_ui(page, username: str, password: str | None = None) -> None:
 def _logout_ui(page) -> None:
     page.locator("#btn-logout").click()
     page.locator("#tab-auth.active").wait_for(state="visible", timeout=8000)
+    expect(page.locator("#nav-rail")).to_be_hidden()
+    assert page.locator(".tab-btn:visible").count() == 0
+
+
+def _assert_visible_workspace_tabs(page, expected_tabs: list[str]) -> None:
+    assert page.locator('.tab-btn[data-tab="tab-auth"]').count() == 0
+    expect(page.locator("#tab-auth")).to_be_hidden()
+    expect(page.locator("#nav-rail")).to_be_visible()
+    visible_tabs = [
+        btn.get_attribute("data-tab")
+        for btn in page.locator(".tab-btn:visible").all()
+    ]
+    assert visible_tabs == expected_tabs, (
+        f"Expected workspace tabs {expected_tabs}, got {visible_tabs}"
+    )
+    for tab_id in ("tab-student", "tab-scanner", "tab-organizer", "tab-admin"):
+        if tab_id not in expected_tabs:
+            expect(page.locator(f"#{tab_id}")).to_be_hidden()
 
 
 @pytest.mark.e2e
@@ -80,9 +98,14 @@ def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
                 )
                 page.on("pageerror", lambda err: page_errors.append(str(err)))
 
-                # 1. Landing & invalid login check + mobile responsive check
+                # 1. Landing & invalid login check + mobile responsive check + strict unauthenticated gate
                 page.goto(f"{cluster.gateway_url}/", wait_until="networkidle")
                 page.locator("#tab-auth.active").wait_for(state="visible", timeout=8000)
+                assert page.locator(".auth-hero").count() == 0
+                expect(page.locator("#nav-rail")).to_be_hidden()
+                assert page.locator(".tab-btn:visible").count() == 0
+                for restricted_tab in ("tab-student", "tab-scanner", "tab-organizer", "tab-admin"):
+                    expect(page.locator(f"#{restricted_tab}")).to_be_hidden()
                 _assert_no_horizontal_overflow(page, "login desktop")
                 _assert_mobile_no_overflow(page, "login mobile")
 
@@ -105,6 +128,7 @@ def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
                 t_login0 = time.monotonic()
                 _login_ui(page, "student_s001")
                 page.locator("#tab-student.active").wait_for(state="visible", timeout=8000)
+                _assert_visible_workspace_tabs(page, ["tab-student"])
                 login_elapsed_ms = (time.monotonic() - t_login0) * 1000.0
                 assert login_elapsed_ms < 4000.0, f"Student login too slow: {login_elapsed_ms:.1f}ms"
                 page.locator('.btn-register-ev[data-event-id="EVT-001"]').click()
@@ -172,6 +196,7 @@ def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
                 # 5. Scanner1: Upload downloaded QR PNG -> auto-decode + check-in, repeat scan 409, wrong-event 404, and live FP 2 outage recovery
                 _login_ui(page, "scanner1")
                 page.locator("#tab-scanner.active").wait_for(state="visible", timeout=8000)
+                _assert_visible_workspace_tabs(page, ["tab-scanner"])
                 page.locator("#scanner-event-id").select_option("EVT-001")
                 page.locator('.scanner-mode-btn[data-scan-mode="upload"]').click()
                 page.locator("#scanner-pane-upload.active").wait_for(state="visible", timeout=5000)
@@ -232,6 +257,7 @@ def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
                 # 6. Organizer1: combined report, edit EVT-001 capacity, create EVT-003
                 _login_ui(page, "organizer1")
                 page.locator("#tab-organizer.active").wait_for(state="visible", timeout=8000)
+                _assert_visible_workspace_tabs(page, ["tab-organizer"])
                 page.locator("#org-event-id").select_option("EVT-001")
                 page.locator("#btn-load-report").click()
                 page.locator("#org-report-output .stat-strip").wait_for(
@@ -262,6 +288,9 @@ def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
                 expect(page.locator("#org-event-status")).to_contain_text(
                     "EVT-003", timeout=8000
                 )
+                expect(page.locator("#rbac-scope-pill")).to_contain_text(
+                    "EVT-003", timeout=8000
+                )
                 page.locator("#org-event-id").select_option("EVT-003")
                 page.locator("#btn-load-report").click()
                 expect(page.locator("#org-report-output")).to_contain_text(
@@ -273,6 +302,7 @@ def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
                 # 7. Admin1: health, create scanner3, update assignments via Edit button, filter logs, purge
                 _login_ui(page, "admin1")
                 page.locator("#tab-admin.active").wait_for(state="visible", timeout=8000)
+                _assert_visible_workspace_tabs(page, ["tab-scanner", "tab-organizer", "tab-admin"])
                 page.locator("#admin-health-output table").wait_for(
                     state="visible", timeout=8000
                 )
@@ -320,13 +350,23 @@ def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
                 assert "Password123!" not in audit_text
                 _assert_no_horizontal_overflow(page, "admin console desktop")
                 _assert_mobile_no_overflow(page, "admin console mobile")
+                # Admin can navigate between authorized workspaces cleanly
+                page.locator('.tab-btn[data-tab="tab-organizer"]').click()
+                page.locator("#tab-organizer.active").wait_for(state="visible", timeout=5000)
+                expect(page.locator("#tab-admin")).to_be_hidden()
+                page.locator('.tab-btn[data-tab="tab-admin"]').click()
+                page.locator("#tab-admin.active").wait_for(state="visible", timeout=5000)
                 _logout_ui(page)
 
                 # 8. Log in as newly created scanner3 and verify assigned EVT-001 check-in works end-to-end
                 _login_ui(page, "scanner3", "Password123!")
                 page.locator("#tab-scanner.active").wait_for(state="visible", timeout=8000)
+                _assert_visible_workspace_tabs(page, ["tab-scanner"])
                 assert (
                     page.locator('#scanner-event-id option[value="EVT-003"]').count() == 1
+                )
+                assert (
+                    page.locator('#scanner-event-id option[value="EVT-002"]').count() == 0
                 )
                 page.locator("#scanner-event-id").select_option("EVT-001")
                 page.locator("#scanner-qr-token").fill(qr_s001)
@@ -335,6 +375,16 @@ def test_full_ui_clickthrough_smoke_all_roles_outages_and_responsive(tmp_path):
                     state="visible", timeout=8000
                 )
                 assert "ALREADY_CHECKED_IN" in page.locator("#scanner-result").inner_text()
+                _logout_ui(page)
+
+                # 9. Organizer2 is strictly scoped to EVT-002 only in UI selectors
+                _login_ui(page, "organizer2")
+                page.locator("#tab-organizer.active").wait_for(state="visible", timeout=8000)
+                _assert_visible_workspace_tabs(page, ["tab-organizer"])
+                assert page.locator('#org-event-id option[value="EVT-002"]').count() == 1
+                assert page.locator('#org-event-id option[value="EVT-001"]').count() == 0
+                assert page.locator('#org-event-id option[value="EVT-003"]').count() == 0
+                assert page.locator('#edit-ev-select option[value="EVT-001"]').count() == 0
             finally:
                 browser.close()
     finally:

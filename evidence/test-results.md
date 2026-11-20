@@ -1,6 +1,6 @@
 # Section 10 Evidence: Verification & Test Results
 
-Generated: `2026-11-20T16:30:17+08:00`
+Generated: `2026-11-20T17:36:17+08:00`
 
 ## Proposal Six Integration-Focused Test Cases Mapping
 
@@ -127,5 +127,5 @@ tests/failure_path/test_fp2_attendance_outage.py::test_fp2_lost_response_after_c
     @app.on_event("shutdown")
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-================= 38 passed, 50 warnings in 157.95s (0:02:37) =================
+================= 38 passed, 50 warnings in 109.53s (0:01:49) =================
 ```
