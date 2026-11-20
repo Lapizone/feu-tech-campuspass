@@ -252,11 +252,23 @@ class SqliteGatewayAuthRepository:
                         404, "ACCOUNT_NOT_FOUND", f"Account '{account_id}' not found."
                     )
                 new_role = role if role is not None else row["role"]
-                new_events = (
-                    assigned_event_ids
-                    if assigned_event_ids is not None
-                    else json.loads(row["assigned_event_ids_json"])
-                )
+                if new_role == "STUDENT" and not (row["student_id"] or "").strip():
+                    raise ServiceError(
+                        422,
+                        "INVALID_PAYLOAD",
+                        "Cannot assign role 'STUDENT' to an account without a bound studentId.",
+                    )
+                if assigned_event_ids is not None:
+                    cleaned_events = [e.strip() for e in assigned_event_ids]
+                    if any(not e for e in cleaned_events):
+                        raise ServiceError(
+                            422,
+                            "INVALID_PAYLOAD",
+                            "assignedEventIds entries must not be blank.",
+                        )
+                    new_events = cleaned_events
+                else:
+                    new_events = json.loads(row["assigned_event_ids_json"])
                 conn.execute(
                     """
                     UPDATE accounts

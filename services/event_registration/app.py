@@ -322,15 +322,13 @@ def create_app(
             service_secrets=cfg.service_secrets,
             context_hmac_key=cfg.context_hmac_key,
         )
-        actor = require_user_permission(
-            user_ctx, {ROLE_STUDENT, ROLE_ADMINISTRATOR}, cid
-        )
+        actor = require_user_permission(user_ctx, {ROLE_STUDENT}, cid)
 
         clean_event = eventId.strip()
         if not clean_event:
             raise ServiceError(422, "INVALID_PAYLOAD", "eventId must not be empty.", cid)
 
-        if actor["role"] == ROLE_STUDENT and actor.get("studentId") != body.studentId:
+        if actor.get("studentId") != body.studentId:
             audit.record(
                 correlation_id=cid,
                 category="Authentication and authorization",

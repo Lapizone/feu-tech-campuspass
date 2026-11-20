@@ -13,6 +13,7 @@ from shared.tls import build_client_ssl_context
 
 
 @pytest.mark.e2e
+@pytest.mark.timeout(120)
 def test_live_https_cluster_full_lifecycle_ui_and_process_kill_fp2(tmp_path):
     cluster = ServiceCluster.build(
         work_dir=tmp_path,

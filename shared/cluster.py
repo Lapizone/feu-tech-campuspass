@@ -167,11 +167,11 @@ class ServiceCluster:
         for name in list(reversed(list(self.processes.keys()))):
             self.stop_service(name)
 
-    def _wait_for_health(self, svc: ManagedService, timeout_sec: float = 15.0) -> None:
+    def _wait_for_health(self, svc: ManagedService, timeout_sec: float = 45.0) -> None:
         deadline = time.monotonic() + timeout_sec
         ssl_ctx = build_client_ssl_context(self.ca_cert_path)
         last_error: Exception | None = None
-        with httpx.Client(verify=ssl_ctx, timeout=1.5) as client:
+        with httpx.Client(verify=ssl_ctx, timeout=3.0, trust_env=False) as client:
             while time.monotonic() < deadline:
                 if svc.process.poll() is not None:
                     stderr_out = svc.process.stderr.read() if svc.process.stderr else ""

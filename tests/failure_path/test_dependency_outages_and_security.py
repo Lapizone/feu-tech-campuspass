@@ -14,6 +14,7 @@ from services.notification.app import create_app as create_notification_app
 from services.student_directory.app import create_app as create_directory_app
 from shared.config import load_settings
 from shared.schemas import assert_schema
+from shared.security import build_service_headers
 
 
 def _make_settings(tmp_path):
@@ -100,6 +101,8 @@ def test_rbac_matrix_cross_event_isolation_and_internal_endpoint_protection(tmp_
     reg_id = r_reg.json()["registrationId"]
 
     assert client.post("/api/v1/events/EVT-002/registrations", json={"studentId": "S-002"}, headers=s1_hdr).status_code == 403
+    # Administrator cannot register on behalf of a student (Proposal Page 13 role table: Student only)
+    assert client.post("/api/v1/events/EVT-002/registrations", json={"studentId": "S-001"}, headers=adm_hdr).status_code == 403
     # Empty studentId for authenticated student must validate as 422 INVALID_PAYLOAD, not 403
     r_empty_sid = client.post("/api/v1/events/EVT-002/registrations", json={"studentId": ""}, headers=s1_hdr)
     assert r_empty_sid.status_code == 422
@@ -139,6 +142,37 @@ def test_rbac_matrix_cross_event_isolation_and_internal_endpoint_protection(tmp_
         json={"eventId": "EVT-001", "qrToken": qr_token},
         headers=s1_hdr,
     ).status_code == 401
+
+    # Direct Registration enforcement: ADMINISTRATOR context cannot register a student -> 403 FORBIDDEN
+    direct_adm_hdr = build_service_headers(
+        service_id="gateway",
+        service_secret=settings.gateway_service_secret,
+        correlation_id="corr-direct-admin-reg",
+        user_ctx={
+            "accountId": "ACC-ADM1",
+            "username": "admin1",
+            "role": "ADMINISTRATOR",
+            "studentId": None,
+            "assignedEventIds": ["EVT-001", "EVT-002"],
+        },
+        context_hmac_key=settings.context_hmac_key,
+    )
+    r_direct_adm = direct_reg.post(
+        "/api/v1/events/EVT-002/registrations",
+        json={"studentId": "S-001"},
+        headers=direct_adm_hdr,
+    )
+    assert r_direct_adm.status_code == 403
+    assert r_direct_adm.json()["code"] == "FORBIDDEN"
+
+    # Reassigning non-student account without studentId to STUDENT -> 422 INVALID_PAYLOAD
+    r_bad_reassign = client.put(
+        "/api/v1/admin/accounts/ACC-SCN1/assignments",
+        json={"role": "STUDENT", "assignedEventIds": []},
+        headers=adm_hdr,
+    )
+    assert r_bad_reassign.status_code == 422
+    assert r_bad_reassign.json()["code"] == "INVALID_PAYLOAD"
 
     # 3. Cross-event isolation: organizer2 & scanner2 (EVT-002 only) get 403 on EVT-001
     assert client.get("/api/v1/events/EVT-001/reports/attendance", headers=org2_hdr).status_code == 403

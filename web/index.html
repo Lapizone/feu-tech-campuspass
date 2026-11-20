@@ -9,89 +9,158 @@
 <body>
   <header class="topbar">
     <div class="brand">
-      <h1>Integrated Campus Event Registration &amp; Attendance System</h1>
-      <p>HTTPS Prototype &middot; Versioned /api/v1/ Contracts &middot; Independent Service Boundaries</p>
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <path d="M14 14h3v3h-3zM20 14v7M14 20h3"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Integrated Campus Event Registration &amp; Attendance</h1>
+        <p>HTTPS Prototype &middot; Versioned <code>/api/v1/</code> Contracts &middot; Independent Service Boundaries</p>
+      </div>
     </div>
     <div class="session-bar">
-      <span id="session-summary">Not signed in</span>
-      <button id="btn-logout" class="secondary" style="display:none;">Sign Out</button>
+      <span id="session-pill" class="session-pill is-guest">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="session-summary">Not signed in</span>
+      </span>
+      <button id="btn-logout" type="button" class="btn secondary" style="display:none;">Sign Out</button>
     </div>
   </header>
 
-  <nav class="nav-tabs" aria-label="Role workspaces">
-    <button class="tab-btn active" data-tab="tab-auth">Sign In</button>
-    <button class="tab-btn" data-tab="tab-student">Student Portal</button>
-    <button class="tab-btn" data-tab="tab-scanner">Check-in Scanner</button>
-    <button class="tab-btn" data-tab="tab-organizer">Organizer Dashboard</button>
-    <button class="tab-btn" data-tab="tab-admin">Administrator Console</button>
+  <nav class="nav-tabs" role="tablist" aria-label="Role workspaces">
+    <button type="button" class="tab-btn active" role="tab" aria-selected="true" aria-controls="tab-auth" data-tab="tab-auth">Sign In</button>
+    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-student" data-tab="tab-student">Student Portal <span class="tab-role">STUDENT</span></button>
+    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-scanner" data-tab="tab-scanner">Check-in Scanner <span class="tab-role">STAFF</span></button>
+    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-organizer" data-tab="tab-organizer">Organizer Dashboard <span class="tab-role">ORGANIZER</span></button>
+    <button type="button" class="tab-btn" role="tab" aria-selected="false" aria-controls="tab-admin" data-tab="tab-admin">Administrator Console <span class="tab-role">ADMIN</span></button>
   </nav>
 
   <main class="container">
-    <div id="global-status"></div>
+    <div id="global-status" aria-live="polite"></div>
 
     <!-- Sign In Panel -->
-    <section id="tab-auth" class="panel active">
+    <section id="tab-auth" class="panel active" role="tabpanel">
       <div class="grid-2">
         <div class="card">
-          <h2>Authenticate Sample Account</h2>
-          <p class="muted">Sessions are validated server-side against salted scrypt password hashes.</p>
+          <div class="card-head">
+            <div>
+              <h2>Authenticate Sample Account</h2>
+              <p class="muted">Server-validated sessions backed by salted <code>scrypt</code> password hashes over HTTPS.</p>
+            </div>
+          </div>
           <form id="login-form">
             <label for="login-username">Username</label>
-            <input id="login-username" name="username" required placeholder="e.g. student_s001">
+            <input id="login-username" name="username" autocomplete="username" required placeholder="e.g. student_s001">
+
             <label for="login-password">Password</label>
-            <input id="login-password" name="password" type="password" required placeholder="Password123!">
+            <input id="login-password" name="password" type="password" autocomplete="current-password" required placeholder="Password123!">
+
             <div class="row">
-              <button type="submit" class="primary">Sign In</button>
+              <button id="btn-login-submit" type="submit" class="btn primary">Sign In</button>
             </div>
           </form>
         </div>
+
         <div class="card">
-          <h3>Sample Prototype Accounts</h3>
-          <p class="muted">Click any sample account below to autofill credentials for testing each role boundary:</p>
-          <div class="row">
-            <button class="secondary quick-login" data-user="student_s001" data-pass="Password123!">student_s001 (S-001 Eligible)</button>
-            <button class="secondary quick-login" data-user="student_s002" data-pass="Password123!">student_s002 (S-002 Eligible)</button>
-            <button class="secondary quick-login" data-user="student_s003" data-pass="Password123!">student_s003 (S-003 Eligible)</button>
-            <button class="secondary quick-login" data-user="student_s004" data-pass="Password123!">student_s004 (ON_LEAVE)</button>
-            <button class="secondary quick-login" data-user="student_s005" data-pass="Password123!">student_s005 (EVT-001 Ineligible)</button>
-            <button class="secondary quick-login" data-user="scanner1" data-pass="Password123!">scanner1 (Check-in Staff)</button>
-            <button class="secondary quick-login" data-user="organizer1" data-pass="Password123!">organizer1 (Organizer)</button>
-            <button class="secondary quick-login" data-user="admin1" data-pass="AdminPassword123!">admin1 (Administrator)</button>
+          <div class="card-head">
+            <div>
+              <h2>Sample Prototype Accounts</h2>
+              <p class="muted">Grouped by role to test eligibility, capacity, check-in, cross-event RBAC, and administration.</p>
+            </div>
+          </div>
+
+          <div class="chip-group">
+            <div class="chip-group-label">Students (Own Identity &amp; QR Pass)</div>
+            <div class="chip-row">
+              <button type="button" class="btn chip quick-login" data-user="student_s001" data-pass="Password123!">student_s001 · S-001 Eligible</button>
+              <button type="button" class="btn chip quick-login" data-user="student_s002" data-pass="Password123!">student_s002 · S-002 Eligible</button>
+              <button type="button" class="btn chip quick-login" data-user="student_s003" data-pass="Password123!">student_s003 · S-003 Eligible</button>
+              <button type="button" class="btn chip quick-login" data-user="student_s004" data-pass="Password123!">student_s004 · ON_LEAVE</button>
+              <button type="button" class="btn chip quick-login" data-user="student_s005" data-pass="Password123!">student_s005 · EVT-001 Ineligible</button>
+            </div>
+          </div>
+
+          <div class="chip-group">
+            <div class="chip-group-label">Venue &amp; Event Staff (Event-Scoped)</div>
+            <div class="chip-row">
+              <button type="button" class="btn chip quick-login" data-user="scanner1" data-pass="Password123!">scanner1 · EVT-001 &amp; EVT-002</button>
+              <button type="button" class="btn chip quick-login" data-user="scanner2" data-pass="Password123!">scanner2 · EVT-002 Only</button>
+              <button type="button" class="btn chip quick-login" data-user="organizer1" data-pass="Password123!">organizer1 · EVT-001 &amp; EVT-002</button>
+              <button type="button" class="btn chip quick-login" data-user="organizer2" data-pass="Password123!">organizer2 · EVT-002 Only</button>
+            </div>
+          </div>
+
+          <div class="chip-group">
+            <div class="chip-group-label">Administration</div>
+            <div class="chip-row">
+              <button type="button" class="btn chip quick-login" data-user="admin1" data-pass="AdminPassword123!">admin1 · Full Prototype Scope</button>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- Student Portal -->
-    <section id="tab-student" class="panel">
+    <section id="tab-student" class="panel" role="tabpanel">
       <div class="grid-2">
         <div class="card">
-          <h2>Available Campus Events</h2>
-          <div class="row">
-            <button id="btn-refresh-events" class="secondary">Refresh Events</button>
+          <div class="card-head">
+            <div>
+              <h2>Available Campus Events</h2>
+              <p class="muted">Directory eligibility, duplicate protection, and slot capacity are checked transactionally.</p>
+            </div>
+            <button id="btn-refresh-events" type="button" class="btn secondary">Refresh Events</button>
           </div>
-          <div id="student-events-list"></div>
-          <div id="student-register-status"></div>
+          <div id="student-events-list">
+            <div class="empty-state">Sign in to inspect campus events and remaining slots.</div>
+          </div>
+          <div id="student-register-status" aria-live="polite"></div>
         </div>
+
         <div class="card">
-          <h2>My Confirmed Registrations &amp; QR Tokens</h2>
-          <p class="muted">Each confirmed registration issues one opaque, event-specific QR token.</p>
-          <div class="row">
-            <button id="btn-refresh-my-regs" class="secondary">Reload My QR Tickets</button>
+          <div class="card-head">
+            <div>
+              <h2>My Confirmed Passes &amp; QR Tokens</h2>
+              <p class="muted">One unpredictable, event-specific opaque token is issued per confirmed registration.</p>
+            </div>
+            <button id="btn-refresh-my-regs" type="button" class="btn secondary">Reload Passes</button>
           </div>
-          <div id="my-registrations-list"></div>
+          <div id="my-registrations-list">
+            <div class="empty-state">Confirmed event passes will render here with a scannable QR code.</div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- Check-in Scanner -->
-    <section id="tab-scanner" class="panel">
+    <section id="tab-scanner" class="panel" role="tabpanel">
       <div class="card">
-        <h2>Venue QR Check-in Scanner</h2>
-        <p class="muted">
-          Follows the two-step validation &amp; reconciliation contract: validates token to retain
-          <code>registrationId</code>, submits check-in, and never displays <code>503</code> or timeouts as verified success.
-        </p>
+        <div class="card-head">
+          <div>
+            <h2>Venue QR Check-in Scanner</h2>
+            <p class="muted">Two-step contract: pre-validates token to retain <code>registrationId</code>, submits check-in once, and keeps <code>503</code> or timeouts honestly unverified until reconciled.</p>
+          </div>
+        </div>
+
+        <ol id="scanner-stepper" class="stepper" aria-label="Check-in workflow steps">
+          <li class="step" data-step="validate">
+            <span class="step-num">1</span>
+            <span>Validate Token</span>
+          </li>
+          <li class="step" data-step="checkin">
+            <span class="step-num">2</span>
+            <span>Record Check-in</span>
+          </li>
+          <li class="step" data-step="reconcile">
+            <span class="step-num">3</span>
+            <span>Reconcile if Unverified</span>
+          </li>
+        </ol>
+
         <div class="grid-2">
           <div>
             <label for="scanner-event-id">Assigned Event</label>
@@ -101,15 +170,21 @@
             <input id="scanner-qr-token" placeholder="Paste or scan opaque QR token">
 
             <div class="row">
-              <button id="btn-scanner-checkin" class="primary">Validate &amp; Check In</button>
-              <button id="btn-scanner-reconcile" class="warning" style="display:none;">Reconcile Attendance Status</button>
-              <button id="btn-scanner-retry" class="primary" style="display:none;">Safe Retry Check-in</button>
+              <button id="btn-scanner-checkin" type="button" class="btn primary">Validate &amp; Check In</button>
+              <button id="btn-scanner-reconcile" type="button" class="btn warning" style="display:none;">Reconcile Attendance Status</button>
+              <button id="btn-scanner-retry" type="button" class="btn primary" style="display:none;">Safe Retry Check-in</button>
             </div>
           </div>
+
           <div>
             <h3>Scanner Outcome</h3>
-            <div id="scanner-result">
-              <div class="alert info">Awaiting QR scan.</div>
+            <div id="scanner-result" aria-live="polite">
+              <div class="alert info">
+                <div>
+                  <strong>Awaiting QR Scan</strong>
+                  <div>Select an assigned event and scan or paste a confirmed participant QR token.</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -117,63 +192,233 @@
     </section>
 
     <!-- Organizer Dashboard -->
-    <section id="tab-organizer" class="panel">
+    <section id="tab-organizer" class="panel" role="tabpanel">
       <div class="grid-2">
         <div class="card">
-          <h2>Create Event</h2>
-          <form id="create-event-form">
-            <label for="ev-id">Event ID (optional)</label>
-            <input id="ev-id" placeholder="e.g. EVT-003">
+          <div class="card-head">
+            <div>
+              <h2>Event Management</h2>
+              <p class="muted">Create new events or update capacity and eligibility rules for assigned events.</p>
+            </div>
+          </div>
+
+          <div class="segmented" role="group" aria-label="Event management mode">
+            <button type="button" class="seg-btn active" aria-pressed="true" data-org-mode="create">Create Event</button>
+            <button type="button" class="seg-btn" aria-pressed="false" data-org-mode="edit">Edit Assigned Event</button>
+          </div>
+
+          <form id="create-event-form" class="mode-pane active">
+            <label for="ev-id">Event ID (optional, e.g. EVT-003)</label>
+            <input id="ev-id" pattern="[A-Za-z0-9_\-]*" placeholder="Leave blank to auto-generate">
+
             <label for="ev-title">Title</label>
             <input id="ev-title" required placeholder="Department Research Colloquium">
-            <label for="ev-capacity">Capacity</label>
-            <input id="ev-capacity" type="number" min="1" value="25" required>
+
+            <div class="form-row-2">
+              <div>
+                <label for="ev-capacity">Capacity</label>
+                <input id="ev-capacity" type="number" min="1" value="25" required>
+              </div>
+              <div>
+                <label for="ev-eligible-statuses">Eligible Statuses (comma-separated)</label>
+                <input id="ev-eligible-statuses" value="ENROLLED" required>
+              </div>
+            </div>
+
             <label for="ev-desc">Description</label>
             <input id="ev-desc" placeholder="Short event summary">
+
             <div class="row">
-              <button type="submit" class="primary">Create Event</button>
+              <button id="btn-create-event" type="submit" class="btn primary">Create Event</button>
             </div>
           </form>
+
+          <form id="edit-event-form" class="mode-pane">
+            <label for="edit-ev-select">Select Event to Edit</label>
+            <select id="edit-ev-select"></select>
+
+            <label for="edit-ev-title">Title</label>
+            <input id="edit-ev-title" required placeholder="Event title">
+
+            <div class="form-row-2">
+              <div>
+                <label for="edit-ev-capacity">Capacity</label>
+                <input id="edit-ev-capacity" type="number" min="1" required>
+              </div>
+              <div>
+                <label for="edit-ev-eligible-statuses">Eligible Statuses (comma-separated)</label>
+                <input id="edit-ev-eligible-statuses" value="ENROLLED" required>
+              </div>
+            </div>
+
+            <label for="edit-ev-desc">Description</label>
+            <input id="edit-ev-desc" placeholder="Short event summary">
+
+            <div class="row">
+              <button id="btn-edit-event" type="submit" class="btn primary">Save Event Changes</button>
+            </div>
+          </form>
+
+          <div id="org-event-status" aria-live="polite"></div>
         </div>
+
         <div class="card">
-          <h2>Combined Participant &amp; Attendance Report</h2>
+          <div class="card-head">
+            <div>
+              <h2>Combined Participant &amp; Attendance Report</h2>
+              <p class="muted">Reconciles confirmed registrations with recorded check-ins via <code>/api/v1/</code> without partial totals.</p>
+            </div>
+          </div>
+
           <label for="org-event-id">Event</label>
           <select id="org-event-id"></select>
           <div class="row">
-            <button id="btn-load-report" class="primary">Load Combined Report</button>
-            <button id="btn-load-participants" class="secondary">Confirmed Participants Only</button>
+            <button id="btn-load-report" type="button" class="btn primary">Load Combined Report</button>
+            <button id="btn-load-participants" type="button" class="btn secondary">Confirmed Participants Only</button>
           </div>
-          <div id="org-report-output"></div>
+          <div id="org-report-output" aria-live="polite">
+            <div class="empty-state">Select an event and load the combined report.</div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- Administrator Console -->
-    <section id="tab-admin" class="panel">
+    <section id="tab-admin" class="panel" role="tabpanel">
       <div class="grid-2">
         <div class="card">
-          <h2>Service Health &amp; Controls</h2>
-          <div class="row">
-            <button id="btn-admin-refresh" class="primary">Refresh Admin Telemetry</button>
-            <button id="btn-admin-purge" class="secondary">Run 30-Day Audit Purge</button>
+          <div class="card-head">
+            <div>
+              <h2>Service Health &amp; Audit Retention</h2>
+              <p class="muted">Probes all five HTTPS microservices independently and enforces 30-day audit retention.</p>
+            </div>
+          </div>
+          <div class="row" style="margin-top:0;">
+            <button id="btn-admin-refresh" type="button" class="btn primary">Refresh Admin Telemetry</button>
+            <button id="btn-admin-purge" type="button" class="btn secondary">Run 30-Day Audit Purge</button>
           </div>
           <div id="admin-health-output"></div>
         </div>
+
         <div class="card">
-          <h2>Sample Accounts &amp; Assignments</h2>
-          <div id="admin-accounts-output"></div>
+          <div class="card-head">
+            <div>
+              <h2>Account &amp; Assignment Management</h2>
+              <p class="muted">Provision sample accounts or update role and event assignments.</p>
+            </div>
+          </div>
+
+          <div class="segmented" role="group" aria-label="Account management mode">
+            <button type="button" class="seg-btn active" aria-pressed="true" data-adm-mode="create">Create Sample Account</button>
+            <button type="button" class="seg-btn" aria-pressed="false" data-adm-mode="assign">Update Assignments</button>
+          </div>
+
+          <form id="create-account-form" class="mode-pane active">
+            <div class="form-row-2">
+              <div>
+                <label for="acc-username">Username</label>
+                <input id="acc-username" required placeholder="e.g. scanner3">
+              </div>
+              <div>
+                <label for="acc-password">Password</label>
+                <input id="acc-password" type="password" required placeholder="Password123!">
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <div>
+                <label for="acc-role">Role</label>
+                <select id="acc-role">
+                  <option value="STUDENT">STUDENT</option>
+                  <option value="CHECK_IN_STAFF">CHECK_IN_STAFF</option>
+                  <option value="EVENT_ORGANIZER">EVENT_ORGANIZER</option>
+                  <option value="ADMINISTRATOR">ADMINISTRATOR</option>
+                </select>
+              </div>
+              <div id="acc-student-id-wrap">
+                <label for="acc-student-id">Student ID (for STUDENT)</label>
+                <input id="acc-student-id" placeholder="e.g. S-001">
+              </div>
+            </div>
+
+            <label for="acc-events">Assigned Event IDs (comma-separated)</label>
+            <input id="acc-events" placeholder="e.g. EVT-001, EVT-002">
+
+            <div class="row">
+              <button id="btn-create-account" type="submit" class="btn primary">Create Sample Account</button>
+            </div>
+          </form>
+
+          <form id="update-assignments-form" class="mode-pane">
+            <label for="assign-account-id">Account ID</label>
+            <input id="assign-account-id" required placeholder="Select from Accounts table or enter ACC-...">
+
+            <div class="form-row-2">
+              <div>
+                <label for="assign-role">Role</label>
+                <select id="assign-role">
+                  <option value="STUDENT">STUDENT</option>
+                  <option value="CHECK_IN_STAFF">CHECK_IN_STAFF</option>
+                  <option value="EVENT_ORGANIZER">EVENT_ORGANIZER</option>
+                  <option value="ADMINISTRATOR">ADMINISTRATOR</option>
+                </select>
+              </div>
+              <div>
+                <label for="assign-events">Assigned Event IDs (comma-separated)</label>
+                <input id="assign-events" placeholder="e.g. EVT-001, EVT-003">
+              </div>
+            </div>
+
+            <div class="row">
+              <button id="btn-update-assignments" type="submit" class="btn primary">Save Assignments</button>
+            </div>
+          </form>
+
+          <div id="admin-account-status" aria-live="polite"></div>
         </div>
       </div>
+
       <div class="card">
-        <h3>Notification Queue &amp; Failed-Notification Review</h3>
+        <div class="card-head">
+          <div>
+            <h3>Sample Accounts &amp; Assignments</h3>
+            <p class="muted">Click Edit on any row to modify role or assigned events.</p>
+          </div>
+        </div>
+        <div id="admin-accounts-output"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h3>Notification Queue &amp; Failed-Notification Review</h3>
+            <p class="muted">Accepted HTTP 202 dispatches plus any retry-exhausted notifications flagged for review.</p>
+          </div>
+        </div>
         <div id="admin-notifications-output"></div>
       </div>
+
       <div class="card">
-        <h3>Redacted Audit Logs (Aggregated via HTTPS Interfaces)</h3>
+        <div class="card-head">
+          <div>
+            <h3>Redacted Audit Logs (Aggregated via HTTPS Interfaces)</h3>
+            <p class="muted">Raw QR tokens, passwords, session secrets, and personal emails are stripped before storage.</p>
+          </div>
+        </div>
+        <div id="admin-audit-filters" class="filter-bar" role="group" aria-label="Filter audit logs by category">
+          <button type="button" class="btn filter-pill active" aria-pressed="true" data-category="ALL">All</button>
+          <button type="button" class="btn filter-pill" aria-pressed="false" data-category="Authentication and authorization">Auth</button>
+          <button type="button" class="btn filter-pill" aria-pressed="false" data-category="Event and registration activity">Events &amp; Reg</button>
+          <button type="button" class="btn filter-pill" aria-pressed="false" data-category="Attendance activity">Attendance</button>
+          <button type="button" class="btn filter-pill" aria-pressed="false" data-category="Integration failures">Failures</button>
+          <button type="button" class="btn filter-pill" aria-pressed="false" data-category="Notifications and reporting">Notifications</button>
+        </div>
         <div id="admin-audit-output"></div>
       </div>
     </section>
   </main>
+
+  <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
   <script src="/static/qr.js"></script>
   <script src="/static/app.js"></script>

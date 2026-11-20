@@ -425,21 +425,20 @@ def create_app(
     async def proxy_register_student(eventId: str, request: Request) -> JSONResponse:
         cid = get_correlation_id(request)
         _, user_ctx = _require_session(request)
-        require_user_permission(user_ctx, {ROLE_STUDENT, ROLE_ADMINISTRATOR}, cid)
+        require_user_permission(user_ctx, {ROLE_STUDENT}, cid)
         body = await _parse_json_object(request)
-        if user_ctx["role"] == ROLE_STUDENT:
-            submitted = body.get("studentId")
-            if (
-                isinstance(submitted, str)
-                and submitted.strip()
-                and submitted.strip() != user_ctx.get("studentId")
-            ):
-                raise ServiceError(
-                    403,
-                    "FORBIDDEN",
-                    "Student identifiers submitted during registration must match the authenticated student account.",
-                    cid,
-                )
+        submitted = body.get("studentId")
+        if (
+            isinstance(submitted, str)
+            and submitted.strip()
+            and submitted.strip() != user_ctx.get("studentId")
+        ):
+            raise ServiceError(
+                403,
+                "FORBIDDEN",
+                "Student identifiers submitted during registration must match the authenticated student account.",
+                cid,
+            )
         return await _forward(
             reg_http,
             "event-registration",
